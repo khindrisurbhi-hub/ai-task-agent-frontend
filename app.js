@@ -113,4 +113,83 @@ async function deleteTask(id) {
 
 function renderTasks(tasks) {
   tasksList.innerHTML='';
-  if(!tasks.length){tasksList.innerHTML='<li>No tasks found.</li>';return
+  if(!tasks.length){
+    tasksList.innerHTML='<li>No tasks found.</li>';
+    return;
+  }
+  tasks.forEach((t,idx)=>{
+    const li=document.createElement('li');
+    li.innerHTML=`<strong>#${idx+1}</strong> ${t.title} <em>${t.status}</em> <br/><small>Due: ${t.due?new Date(t.due).toLocaleString():'-'}</small>`;
+    const completeBtn=document.createElement('button');
+    completeBtn.textContent='Complete';
+    completeBtn.onclick=()=>completeTask(t.id);
+    const delBtn=document.createElement('button');
+    delBtn.textContent='Delete';
+    delBtn.onclick=()=>deleteTask(t.id);
+    li.appendChild(document.createElement('br'));
+    li.appendChild(completeBtn);
+    li.appendChild(delBtn);
+    tasksList.appendChild(li);
+  });
+}
+
+function speak(text){
+  if(!('speechSynthesis' in window)) return;
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='en-US';
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(u);
+}
+
+async function requestNotificationPermissions(){
+  if(!('Notification' in window)) return;
+  if(Notification.permission==='default') await Notification.requestPermission();
+}
+
+function parseDateTime(text){
+  if(!text) return null;
+  try{return chrono.parseDate(text)||null;}catch(e){return null;}
+}
+
+function handleVoiceCommand(text){
+  const lower=text.toLowerCase();
+  if(lower.startsWith('add task')||lower.startsWith('add a task')){
+    const phrase=text.replace(/^(add task|add a task)\s*/i,'');
+    const dt=chrono.parseDate(phrase);
+    let title=phrase;
+    if(dt){
+      const parsed=chrono.parse(phrase);
+      if(parsed && parsed.length) title=phrase.replace(parsed[0].text,'').trim();
+    }
+    if(!title) title='Untitled task';
+    addTask(title,dt);
+    return;
+  }
+  if(lower.startsWith('list tasks')||lower==='list'||lower==='show tasks'){
+    fetchTasks();
+    speak('Here are your tasks');
+    return;
+  }
+  if(lower.startsWith('complete task')){
+    const n=parseInt(text.replace(/^(complete task)/i,'').trim());
+    if(!isNaN(n)){
+      fetchTasks().then(tasks=>{
+        if(tasks[n-1]) completeTask(tasks[n-1].id);
+      });
+    }
+    return;
+  }
+  if(lower.startsWith('delete task')){
+    const n=parseInt(text.replace(/^(delete task)/i,'').trim());
+    if(!isNaN(n)){
+      fetchTasks().then(tasks=>{
+        if(tasks[n-1]) deleteTask(tasks[n-1].id);
+      });
+    }
+    return;
+  }
+  speak('Sorry, I did not understand: '+text);
+  log('Unrecognized command: '+text);
+}
+
+init();
