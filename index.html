@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Task Agent</title>
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>AI Task Agent</h1>
+  
+  <div class="g-signin2" data-onsuccess="onSignIn"></div>
+  
+  <div>
+    <p id="statusText"></p>
+    <input id="taskTitle" placeholder="Task title">
+    <input id="taskDue" placeholder="Due date (optional)">
+    <button id="addTaskBtn">Add Task</button>
+    <button id="listBtn">List Tasks</button>
+    <button id="listenBtn">Start Listening</button>
+    <button id="stopBtn" style="display:none">Stop Listening</button>
+  </div>
+  
+  <ul id="tasksList"></ul>
+  <div id="log" style="border:1px solid #ccc; padding:10px; height:200px; overflow-y:scroll;"></div>
+  
+  <script>
+    function onSignIn(googleUser) {
+      const profile = googleUser.getBasicProfile();
+      console.log('Signed in as: ' + profile.getName());
+      alert(`Hello ${profile.getName()}, you are signed in!`);
+    }
+  </script>
+</body>
+</html>
