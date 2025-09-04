@@ -187,9 +187,3 @@ async function listTasks() {
     alert("❌ Failed to fetch tasks.");
   }
 }
-
-// ✅ Hook buttons
-window.onload = () => {
-  document.getElementById("addTaskBtn").onclick = addTask;
-  document.getElementById("listBtn").onclick = listTasks;
-};
