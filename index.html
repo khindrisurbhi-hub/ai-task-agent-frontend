@@ -8,7 +8,6 @@
 <!-- Google Identity Services -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://unpkg.com/chrono-node/dist/chrono.min.js"></script>
-
 <script src="config.js"></script>
 <script src="app.js" defer></script>
 
@@ -55,12 +54,8 @@ li { margin: 8px 0; }
 </div>
 
 <script>
-let accessToken = null;
-let tokenClient;
-
 window.addEventListener("DOMContentLoaded", () => {
   const signinDiv = document.getElementById("g_id_signin");
-  signinDiv.style.display = "block";
 
   google.accounts.id.initialize({
     client_id: CLIENT_ID,
@@ -81,24 +76,7 @@ window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("addTaskBtn").onclick = addTask;
   document.getElementById("listBtn").onclick = listTasks;
 });
-
-function handleCredentialResponse(response) {
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: (tokenResponse) => {
-      accessToken = tokenResponse.access_token;
-      document.getElementById("statusText").innerText = "✅ Signed in with access!";
-      document.getElementById("signOutBtn").style.display = "inline-block";
-      document.getElementById("g_id_signin").style.display = "none";
-      alert("Login successful! Now you can use Google Tasks.");
-    }
-  });
-  tokenClient.requestAccessToken();
-}
-
-window.getAccessToken = () => accessToken;
 </script>
+
 </body>
 </html>
-
