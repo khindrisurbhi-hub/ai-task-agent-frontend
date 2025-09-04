@@ -45,7 +45,7 @@
   <div id="log"></div>
 
   <script>
-    let accessToken = null; // ✅ store access token
+    let accessToken = null; // ✅ store access token globally
 
     // ✅ Initialize Google Sign-In
     window.onload = function () {
@@ -76,6 +76,7 @@
           console.log("Access Token:", accessToken);
           document.getElementById("statusText").innerText = "✅ Signed in with access!";
           alert("Login successful! Now you can use Google Tasks.");
+          window.setAccessToken(accessToken); // pass token to app.js
         }
       });
 
@@ -84,4 +85,3 @@
   </script>
 </body>
 </html>
-
