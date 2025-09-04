@@ -8,19 +8,43 @@ function formatDate(iso) {
   } catch(e){ return iso; }
 }
 
+// Access token
+let accessToken = null;
+let tokenClient;
+
+// Google OAuth
+function handleCredentialResponse(response) {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (tokenResponse) => {
+      accessToken = tokenResponse.access_token;
+      document.getElementById("statusText").innerText = "✅ Signed in!";
+      document.getElementById("signOutBtn").style.display = "inline-block";
+      document.getElementById("g_id_signin").style.display = "none";
+      alert("Login successful! You can now manage your tasks.");
+    }
+  });
+  tokenClient.requestAccessToken();
+}
+
+window.getAccessToken = () => accessToken;
+
 // Add task
 async function addTask() {
-  const accessToken = window.getAccessToken();
-  if (!accessToken) { alert("Please sign in first."); return; }
+  const token = window.getAccessToken();
+  if(!token){ alert("Please sign in first."); return; }
+
   const title = document.getElementById("taskTitle").value;
   const dueInput = document.getElementById("taskDue").value;
-  if (!title) { alert("Task title cannot be empty!"); return; }
+  if(!title){ alert("Task title cannot be empty!"); return; }
+
   const dueDate = dueInput ? new Date(dueInput).toISOString() : undefined;
 
   try {
     const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", {
       method:"POST",
-      headers:{ Authorization:"Bearer "+accessToken,"Content-Type":"application/json" },
+      headers:{ Authorization:"Bearer "+token,"Content-Type":"application/json" },
       body: JSON.stringify({ title, due: dueDate })
     });
     const task = await res.json();
@@ -31,10 +55,10 @@ async function addTask() {
 
 // List tasks
 async function listTasks() {
-  const accessToken = window.getAccessToken();
-  if (!accessToken) { alert("Please sign in first."); return; }
+  const token = window.getAccessToken();
+  if(!token){ alert("Please sign in first."); return; }
   try {
-    const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", { headers:{ Authorization:"Bearer "+accessToken }});
+    const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", { headers:{ Authorization:"Bearer "+token }});
     const data = await res.json();
     const listEl = document.getElementById("tasksList");
     listEl.innerHTML = "";
@@ -59,18 +83,19 @@ async function listTasks() {
       deleteBtn.textContent="Delete";
       deleteBtn.onclick=()=>deleteTask(task.id);
       li.appendChild(deleteBtn);
+
       listEl.appendChild(li);
     });
   } catch(err){ console.error(err); alert("❌ Failed to fetch tasks."); }
 }
 
-// Mark complete
+// Complete task
 async function markTaskComplete(taskId) {
-  const accessToken = window.getAccessToken();
-  if(!accessToken){ alert("Please sign in first."); return; }
+  const token = window.getAccessToken();
+  if(!token){ alert("Sign in first"); return; }
   await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`, {
     method:"PATCH",
-    headers:{ Authorization:"Bearer "+accessToken,"Content-Type":"application/json"},
+    headers:{ Authorization:"Bearer "+token,"Content-Type":"application/json"},
     body:JSON.stringify({status:"completed"})
   });
   listTasks();
@@ -78,11 +103,11 @@ async function markTaskComplete(taskId) {
 
 // Delete task
 async function deleteTask(taskId) {
-  const accessToken = window.getAccessToken();
-  if(!accessToken){ alert("Please sign in first."); return; }
+  const token = window.getAccessToken();
+  if(!token){ alert("Sign in first"); return; }
   await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`, {
     method:"DELETE",
-    headers:{ Authorization:"Bearer "+accessToken }
+    headers:{ Authorization:"Bearer "+token }
   });
   listTasks();
 }
@@ -131,8 +156,8 @@ if("webkitSpeechRecognition" in window || "SpeechRecognition" in window){
 
 // Helpers
 async function completeTaskByTitle(title){
-  const accessToken=window.getAccessToken(); if(!accessToken){ alert("Sign in first"); return; }
-  const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks",{ headers:{ Authorization:"Bearer "+accessToken }});
+  const token = window.getAccessToken(); if(!token){ alert("Sign in first"); return; }
+  const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks",{ headers:{ Authorization:"Bearer "+token }});
   const data=await res.json();
   const task = data.items.find(t=>t.title.toLowerCase()===title.toLowerCase());
   if(task) await markTaskComplete(task.id);
@@ -140,8 +165,8 @@ async function completeTaskByTitle(title){
 }
 
 async function deleteTaskByTitle(title){
-  const accessToken=window.getAccessToken(); if(!accessToken){ alert("Sign in first"); return; }
-  const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks",{ headers:{ Authorization:"Bearer "+accessToken }});
+  const token = window.getAccessToken(); if(!token){ alert("Sign in first"); return; }
+  const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks",{ headers:{ Authorization:"Bearer "+token }});
   const data=await res.json();
   const task = data.items.find(t=>t.title.toLowerCase()===title.toLowerCase());
   if(task) await deleteTask(task.id);
@@ -149,8 +174,8 @@ async function deleteTaskByTitle(title){
 }
 
 async function listTasksFiltered(type){
-  const accessToken = window.getAccessToken(); if(!accessToken){ alert("Sign in first"); return; }
-  const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks",{ headers:{ Authorization:"Bearer "+accessToken }});
+  const token = window.getAccessToken(); if(!token){ alert("Sign in first."); return; }
+  const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks",{ headers:{ Authorization:"Bearer "+token }});
   const data = await res.json();
   const listEl = document.getElementById("tasksList"); listEl.innerHTML="";
   if(!data.items || data.items.length===0){ listEl.innerHTML="<li>No tasks</li>"; return; }
@@ -166,3 +191,4 @@ async function listTasksFiltered(type){
     }
   });
 }
+
