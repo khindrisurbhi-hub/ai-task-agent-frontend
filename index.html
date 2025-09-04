@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -45,7 +45,7 @@
   <div id="log"></div>
 
   <script>
-    let accessToken = null; // ✅ store access token globally
+    let accessToken = null; // ✅ store access token
 
     // ✅ Initialize Google Sign-In
     window.onload = function () {
@@ -63,25 +63,27 @@
       google.accounts.id.prompt(); // optional auto prompt
     };
 
-    // ✅ Handle login response (ID token + request access token)
+    // ✅ Handle login response (request access token)
     function handleCredentialResponse(response) {
       console.log("ID Token:", response.credential);
 
       // Request an access token for Google Tasks API
       const tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
-        scope: "https://www.googleapis.com/auth/tasks",
+        scope: SCOPES,
         callback: (tokenResponse) => {
           accessToken = tokenResponse.access_token;
           console.log("Access Token:", accessToken);
           document.getElementById("statusText").innerText = "✅ Signed in with access!";
           alert("Login successful! Now you can use Google Tasks.");
-          window.setAccessToken(accessToken); // pass token to app.js
         }
       });
 
       tokenClient.requestAccessToken();
     }
+
+    // ✅ Make accessToken available to app.js
+    window.getAccessToken = () => accessToken;
   </script>
 </body>
 </html>
