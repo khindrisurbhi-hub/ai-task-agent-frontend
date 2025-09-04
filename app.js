@@ -1,6 +1,8 @@
 // app.js
 
-// ✅ Helper: format date nicely
+// =====================
+// Helper: format date nicely
+// =====================
 function formatDate(isoString) {
   if (!isoString) return "";
   try {
@@ -18,7 +20,9 @@ function formatDate(isoString) {
   }
 }
 
-// ✅ Add a new task
+// =====================
+// Add a new task
+// =====================
 async function addTask() {
   const accessToken = window.getAccessToken();
   if (!accessToken) {
@@ -62,7 +66,9 @@ async function addTask() {
   }
 }
 
-// ✅ Mark a task as completed
+// =====================
+// Mark task as completed
+// =====================
 async function markTaskComplete(taskId) {
   const accessToken = window.getAccessToken();
   if (!accessToken) {
@@ -89,7 +95,9 @@ async function markTaskComplete(taskId) {
   }
 }
 
-// ✅ Delete a task
+// =====================
+// Delete a task
+// =====================
 async function deleteTask(taskId) {
   const accessToken = window.getAccessToken();
   if (!accessToken) {
@@ -112,7 +120,9 @@ async function deleteTask(taskId) {
   }
 }
 
-// ✅ List tasks
+// =====================
+// List tasks
+// =====================
 async function listTasks() {
   const accessToken = window.getAccessToken();
   if (!accessToken) {
@@ -145,26 +155,18 @@ async function listTasks() {
       const li = document.createElement("li");
 
       let taskText = task.title;
-      if (task.due) {
-        taskText += ` (Due: ${formatDate(task.due)})`;
-      }
+      if (task.due) taskText += ` (Due: ${formatDate(task.due)})`;
 
-      // ✅ Completed tasks
       if (task.status === "completed") {
         li.style.color = "green";
         li.textContent = "✔ " + taskText;
-      } 
-      // 🔴 Overdue tasks
-      else if (task.due && new Date(task.due) < now) {
+      } else if (task.due && new Date(task.due) < now) {
         li.style.color = "red";
         li.textContent = taskText;
-      } 
-      // 🟢 Active tasks
-      else {
+      } else {
         li.textContent = taskText;
       }
 
-      // Add "Mark Complete" button if not already completed
       if (task.status !== "completed") {
         const completeBtn = document.createElement("button");
         completeBtn.textContent = "Mark Complete";
@@ -173,7 +175,6 @@ async function listTasks() {
         li.appendChild(completeBtn);
       }
 
-      // Add "Delete" button for all tasks
       const deleteBtn = document.createElement("button");
       deleteBtn.textContent = "Delete";
       deleteBtn.style.marginLeft = "10px";
@@ -186,4 +187,51 @@ async function listTasks() {
     console.error("Error listing tasks:", err);
     alert("❌ Failed to fetch tasks.");
   }
+}
+
+// =====================
+// Voice recognition
+// =====================
+let recognition;
+let isListening = false;
+
+if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.lang = "en-US";
+
+  recognition.onstart = () => {
+    isListening = true;
+    document.getElementById("statusText").innerText = "🎤 Listening...";
+    document.getElementById("listenBtn").style.display = "none";
+    document.getElementById("stopBtn").style.display = "inline-block";
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    document.getElementById("statusText").innerText = "🛑 Stopped listening";
+    document.getElementById("listenBtn").style.display = "inline-block";
+    document.getElementById("stopBtn").style.display = "none";
+  };
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    document.getElementById("log").innerHTML += `<div>🗣 You said: ${transcript}</div>`;
+
+    if (transcript.toLowerCase().startsWith("add task")) {
+      const title = transcript.slice(8).trim();
+      if (title) {
+        document.getElementById("taskTitle").value = title;
+        addTask();
+      }
+    } else if (transcript.toLowerCase().includes("list tasks")) {
+      listTasks();
+    }
+  };
+
+  document.getElementById("listenBtn").onclick = () => recognition.start();
+  document.getElementById("stopBtn").onclick = () => recognition.stop();
+} else {
+  alert("⚠️ Your browser does not support Speech Recognition.");
 }
