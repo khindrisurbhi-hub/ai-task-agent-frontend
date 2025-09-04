@@ -1,4 +1,4 @@
-// Helper: format date nicely
+// Helper to format date nicely
 function formatDate(isoString) {
   if (!isoString) return "";
   try {
@@ -10,39 +10,35 @@ function formatDate(isoString) {
       hour: "2-digit",
       minute: "2-digit"
     });
-  } catch (e) {
-    console.error("Date parse error:", e);
-    return isoString;
-  }
+  } catch (e) { return isoString; }
 }
 
 // Add a new task
-async function addTask() {
+async function addTask(titleInput, dueInput) {
   const accessToken = window.getAccessToken();
   if (!accessToken) { alert("Please sign in first."); return; }
 
-  const title = document.getElementById("taskTitle").value.trim();
-  const dueInput = document.getElementById("taskDue").value.trim();
+  const title = titleInput || document.getElementById("taskTitle").value;
+  const dueStr = dueInput || document.getElementById("taskDue").value;
+
   if (!title) { alert("Task title cannot be empty!"); return; }
 
-  const dueDate = dueInput ? new Date(dueInput).toISOString() : undefined;
+  const dueDate = dueStr ? new Date(dueStr).toISOString() : undefined;
 
   try {
     const response = await fetch(
       "https://tasks.googleapis.com/tasks/v1/lists/@default/tasks",
       {
         method: "POST",
-        headers: { 
+        headers: {
           Authorization: "Bearer " + accessToken,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ title, due: dueDate })
+        body: JSON.stringify({ title, due: dueDate }),
       }
     );
     const task = await response.json();
     alert("✅ Task added: " + task.title);
-    document.getElementById("taskTitle").value = "";
-    document.getElementById("taskDue").value = "";
     listTasks();
   } catch (err) {
     console.error(err);
@@ -50,8 +46,42 @@ async function addTask() {
   }
 }
 
-// List tasks
-async function listTasks() {
+// Mark task as complete by ID
+async function markTaskComplete(taskId) {
+  const accessToken = window.getAccessToken();
+  if (!accessToken) { alert("Please sign in first."); return; }
+
+  await fetch(
+    `https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: "Bearer " + accessToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status: "completed" }),
+    }
+  );
+  listTasks();
+}
+
+// Delete a task by ID
+async function deleteTask(taskId) {
+  const accessToken = window.getAccessToken();
+  if (!accessToken) { alert("Please sign in first."); return; }
+
+  await fetch(
+    `https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`,
+    {
+      method: "DELETE",
+      headers: { Authorization: "Bearer " + accessToken },
+    }
+  );
+  listTasks();
+}
+
+// List tasks, optionally filtered
+async function listTasks(filter = "all") {
   const accessToken = window.getAccessToken();
   if (!accessToken) { alert("Please sign in first."); return; }
 
@@ -70,24 +100,20 @@ async function listTasks() {
     }
 
     const now = new Date();
+    data.items.forEach((task) => {
+      if (
+        filter === "completed" && task.status !== "completed" ||
+        filter === "overdue" && (!task.due || task.status === "completed" || new Date(task.due) >= now)
+      ) return;
 
-    data.items.forEach(task => {
       const li = document.createElement("li");
       let taskText = task.title;
       if (task.due) taskText += ` (Due: ${formatDate(task.due)})`;
 
-      // Color for completed / overdue
-      if (task.status === "completed") {
-        li.style.color = "green";
-        li.textContent = "✔ " + taskText;
-      } else if (task.due && new Date(task.due) < now) {
-        li.style.color = "red";
-        li.textContent = taskText;
-      } else {
-        li.textContent = taskText;
-      }
+      if (task.status === "completed") li.textContent = "✔ " + taskText;
+      else if (task.due && new Date(task.due) < now) li.style.color = "red";
+      else li.textContent = taskText;
 
-      // Complete button
       if (task.status !== "completed") {
         const completeBtn = document.createElement("button");
         completeBtn.textContent = "Mark Complete";
@@ -96,7 +122,6 @@ async function listTasks() {
         li.appendChild(completeBtn);
       }
 
-      // Delete button
       const deleteBtn = document.createElement("button");
       deleteBtn.textContent = "Delete";
       deleteBtn.style.marginLeft = "10px";
@@ -111,48 +136,7 @@ async function listTasks() {
   }
 }
 
-// Mark complete
-async function markTaskComplete(taskId) {
-  const accessToken = window.getAccessToken();
-  if (!accessToken) { alert("Please sign in first."); return; }
-
-  try {
-    await fetch(
-      `https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`,
-      {
-        method: "PATCH",
-        headers: {
-          Authorization: "Bearer " + accessToken,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ status: "completed" })
-      }
-    );
-    listTasks();
-  } catch (err) {
-    console.error(err);
-    alert("❌ Failed to complete task.");
-  }
-}
-
-// Delete task
-async function deleteTask(taskId) {
-  const accessToken = window.getAccessToken();
-  if (!accessToken) { alert("Please sign in first."); return; }
-
-  try {
-    await fetch(
-      `https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`,
-      { method: "DELETE", headers: { Authorization: "Bearer " + accessToken } }
-    );
-    listTasks();
-  } catch (err) {
-    console.error(err);
-    alert("❌ Failed to delete task.");
-  }
-}
-
-// Voice recognition
+// Voice recognition setup
 let recognition;
 if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -165,30 +149,32 @@ if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
     document.getElementById("listenBtn").style.display = "none";
     document.getElementById("stopBtn").style.display = "inline-block";
   };
+
   recognition.onend = () => {
     document.getElementById("statusText").innerText = "🛑 Stopped listening";
     document.getElementById("listenBtn").style.display = "inline-block";
     document.getElementById("stopBtn").style.display = "none";
   };
+
   recognition.onresult = (event) => {
     const transcript = event.results[0][0].transcript.toLowerCase();
     document.getElementById("log").innerHTML += `<div>🗣 You said: ${transcript}</div>`;
 
     if (transcript.startsWith("add task")) {
       const title = transcript.slice(8).trim();
-      if (title) { document.getElementById("taskTitle").value = title; addTask(); }
-    } else if (transcript.includes("list tasks")) {
-      listTasks();
+      if (title) addTask(title);
     } else if (transcript.startsWith("complete task")) {
       const title = transcript.slice(13).trim();
-      completeTaskByName(title);
+      handleVoiceComplete(title);
     } else if (transcript.startsWith("delete task")) {
       const title = transcript.slice(11).trim();
-      deleteTaskByName(title);
+      handleVoiceDelete(title);
     } else if (transcript.includes("list overdue tasks")) {
-      listOverdueTasks();
+      listTasks("overdue");
     } else if (transcript.includes("list completed tasks")) {
-      listCompletedTasks();
+      listTasks("completed");
+    } else if (transcript.includes("list tasks")) {
+      listTasks();
     }
   };
 
@@ -198,43 +184,32 @@ if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
   alert("⚠️ Your browser does not support Speech Recognition.");
 }
 
-// Additional helper functions for voice commands
-async function completeTaskByName(name) {
-  const tasks = await fetchTasks();
-  const task = tasks.find(t => t.title.toLowerCase() === name.toLowerCase());
-  if (task) markTaskComplete(task.id);
-  else alert("Task not found: " + name);
-}
-
-async function deleteTaskByName(name) {
-  const tasks = await fetchTasks();
-  const task = tasks.find(t => t.title.toLowerCase() === name.toLowerCase());
-  if (task) deleteTask(task.id);
-  else alert("Task not found: " + name);
-}
-
-async function listOverdueTasks() {
-  const tasks = await fetchTasks();
-  const now = new Date();
-  const overdue = tasks.filter(t => t.due && new Date(t.due) < now && t.status !== "completed");
-  alert(overdue.length ? overdue.map(t => t.title).join("\n") : "No overdue tasks.");
-}
-
-async function listCompletedTasks() {
-  const tasks = await fetchTasks();
-  const completed = tasks.filter(t => t.status === "completed");
-  alert(completed.length ? completed.map(t => t.title).join("\n") : "No completed tasks.");
-}
-
-async function fetchTasks() {
+// Voice command helpers
+async function handleVoiceComplete(title) {
   const accessToken = window.getAccessToken();
-  if (!accessToken) { alert("Please sign in first."); return []; }
-  try {
-    const response = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", { headers: { Authorization: "Bearer " + accessToken } });
-    const data = await response.json();
-    return data.items || [];
-  } catch (err) {
-    console.error(err);
-    return [];
-  }
+  if (!accessToken) return alert("Please sign in first.");
+
+  const response = await fetch(
+    "https://tasks.googleapis.com/tasks/v1/lists/@default/tasks",
+    { headers: { Authorization: "Bearer " + accessToken } }
+  );
+  const data = await response.json();
+  const task = data.items.find(t => t.title.toLowerCase() === title.toLowerCase());
+  if (task) markTaskComplete(task.id);
+  else alert("Task not found: " + title);
 }
+
+async function handleVoiceDelete(title) {
+  const accessToken = window.getAccessToken();
+  if (!accessToken) return alert("Please sign in first.");
+
+  const response = await fetch(
+    "https://tasks.googleapis.com/tasks/v1/lists/@default/tasks",
+    { headers: { Authorization: "Bearer " + accessToken } }
+  );
+  const data = await response.json();
+  const task = data.items.find(t => t.title.toLowerCase() === title.toLowerCase());
+  if (task) deleteTask(task.id);
+  else alert("Task not found: " + title);
+}
+
