@@ -1,6 +1,5 @@
 // app.js
 
-// Helper to format date nicely
 function formatDate(isoString) {
   if (!isoString) return "";
   try {
@@ -10,10 +9,10 @@ function formatDate(isoString) {
 }
 
 // Add a new task
-async function addTask() {
+async function addTask(titleInput) {
   const accessToken = window.getAccessToken();
   if (!accessToken) { alert("Please sign in first."); return; }
-  const title = document.getElementById("taskTitle").value;
+  const title = titleInput || document.getElementById("taskTitle").value;
   const dueInput = document.getElementById("taskDue").value;
   if (!title) { alert("Task title cannot be empty!"); return; }
   const dueDate = dueInput ? new Date(dueInput).toISOString() : undefined;
@@ -30,7 +29,7 @@ async function addTask() {
 }
 
 // List tasks
-async function listTasks() {
+async function listTasks(filter) {
   const accessToken = window.getAccessToken();
   if (!accessToken) { alert("Please sign in first."); return; }
   try {
@@ -40,7 +39,11 @@ async function listTasks() {
     listEl.innerHTML = "";
     if(!data.items || data.items.length===0){ listEl.innerHTML="<li>No tasks found</li>"; return; }
     const now = new Date();
-    data.items.forEach((task)=>{
+    let tasks = data.items;
+    if(filter === "overdue") tasks = tasks.filter(t => t.due && new Date(t.due)<now && t.status!=="completed");
+    if(filter === "completed") tasks = tasks.filter(t => t.status==="completed");
+
+    tasks.forEach((task)=>{
       const li=document.createElement("li");
       let taskText = task.title;
       if(task.due) taskText += ` (Due: ${formatDate(task.due)})`;
@@ -58,6 +61,20 @@ async function listTasks() {
       listEl.appendChild(li);
     });
   } catch(err){ console.error(err); alert("❌ Failed to fetch tasks."); }
+}
+
+// Mark Complete
+async function markTaskComplete(taskId){
+  const accessToken=window.getAccessToken(); if(!accessToken){ alert("Please sign in first."); return; }
+  await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`, { method:"PATCH", headers:{ Authorization:"Bearer "+accessToken,"Content-Type":"application/json"}, body:JSON.stringify({status:"completed"}) });
+  listTasks();
+}
+
+// Delete Task
+async function deleteTask(taskId){
+  const accessToken=window.getAccessToken(); if(!accessToken){ alert("Please sign in first."); return; }
+  await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`, { method:"DELETE", headers:{ Authorization:"Bearer "+accessToken }});
+  listTasks();
 }
 
 // Voice recognition
@@ -78,13 +95,27 @@ if("webkitSpeechRecognition" in window || "SpeechRecognition" in window){
     document.getElementById("listenBtn").style.display="inline-block";
     document.getElementById("stopBtn").style.display="none";
   };
-  recognition.onresult = (event)=>{
-    const transcript=event.results[0][0].transcript;
+  recognition.onresult = async (event)=>{
+    const transcript=event.results[0][0].transcript.trim();
     document.getElementById("log").innerHTML += `<div>🗣 You said: ${transcript}</div>`;
-    if(transcript.toLowerCase().startsWith("add task")){
+
+    const lower = transcript.toLowerCase();
+    if(lower.startsWith("add task")){
       const title=transcript.slice(8).trim();
-      if(title){ document.getElementById("taskTitle").value=title; addTask(); }
-    } else if(transcript.toLowerCase().includes("list tasks")){ listTasks(); }
+      if(title) addTask(title);
+    } else if(lower.startsWith("complete task")){
+      const taskName = transcript.slice(13).trim();
+      await completeTaskByName(taskName);
+    } else if(lower.startsWith("delete task")){
+      const taskName = transcript.slice(11).trim();
+      await deleteTaskByName(taskName);
+    } else if(lower.includes("list tasks")){
+      listTasks();
+    } else if(lower.includes("list overdue tasks")){
+      listTasks("overdue");
+    } else if(lower.includes("list completed tasks")){
+      listTasks("completed");
+    }
   };
 
   document.getElementById("listenBtn").onclick = () => recognition.start();
@@ -93,17 +124,23 @@ if("webkitSpeechRecognition" in window || "SpeechRecognition" in window){
   alert("⚠️ Your browser does not support Speech Recognition.");
 }
 
-// Mark Complete
-async function markTaskComplete(taskId){
-  const accessToken=window.getAccessToken(); if(!accessToken){ alert("Please sign in first."); return; }
-  await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`, { method:"PATCH", headers:{ Authorization:"Bearer "+accessToken,"Content-Type":"application/json"}, body:JSON.stringify({status:"completed"}) });
-  listTasks();
+// Helper functions for voice command actions
+async function completeTaskByName(name){
+  const accessToken = window.getAccessToken();
+  if(!accessToken) { alert("Please sign in first."); return; }
+  const response = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", { headers:{ Authorization:"Bearer "+accessToken }});
+  const data = await response.json();
+  const task = data.items.find(t=>t.title.toLowerCase()===name.toLowerCase());
+  if(task) markTaskComplete(task.id);
+  else alert(`❌ Task not found: ${name}`);
 }
 
-// Delete Task
-async function deleteTask(taskId){
-  const accessToken=window.getAccessToken(); if(!accessToken){ alert("Please sign in first."); return; }
-  await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`, { method:"DELETE", headers:{ Authorization:"Bearer "+accessToken }});
-  listTasks();
+async function deleteTaskByName(name){
+  const accessToken = window.getAccessToken();
+  if(!accessToken) { alert("Please sign in first."); return; }
+  const response = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", { headers:{ Authorization:"Bearer "+accessToken }});
+  const data = await response.json();
+  const task = data.items.find(t=>t.title.toLowerCase()===name.toLowerCase());
+  if(task) deleteTask(task.id);
+  else alert(`❌ Task not found: ${name}`);
 }
-
