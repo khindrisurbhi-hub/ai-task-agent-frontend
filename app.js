@@ -114,7 +114,6 @@ if("webkitSpeechRecognition" in window || "SpeechRecognition" in window){
       if(title){ document.getElementById("taskTitle").value=title; addTask(); }
     } else if(transcript.includes("list tasks")) listTasks();
     else if(transcript.includes("complete task")) {
-      // simple match by title
       const title=transcript.replace("complete task","").trim();
       completeTaskByTitle(title);
     } else if(transcript.includes("delete task")) {
@@ -130,25 +129,25 @@ if("webkitSpeechRecognition" in window || "SpeechRecognition" in window){
   alert("⚠️ Your browser does not support Speech Recognition.");
 }
 
-// Helper: complete task by title
+// Helpers
 async function completeTaskByTitle(title){
   const accessToken=window.getAccessToken(); if(!accessToken){ alert("Sign in first"); return; }
   const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks",{ headers:{ Authorization:"Bearer "+accessToken }});
   const data=await res.json();
   const task = data.items.find(t=>t.title.toLowerCase()===title.toLowerCase());
   if(task) await markTaskComplete(task.id);
+  else alert(`Task "${title}" not found`);
 }
 
-// Helper: delete task by title
 async function deleteTaskByTitle(title){
   const accessToken=window.getAccessToken(); if(!accessToken){ alert("Sign in first"); return; }
   const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks",{ headers:{ Authorization:"Bearer "+accessToken }});
   const data=await res.json();
   const task = data.items.find(t=>t.title.toLowerCase()===title.toLowerCase());
   if(task) await deleteTask(task.id);
+  else alert(`Task "${title}" not found`);
 }
 
-// Filtered list
 async function listTasksFiltered(type){
   const accessToken = window.getAccessToken(); if(!accessToken){ alert("Sign in first"); return; }
   const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks",{ headers:{ Authorization:"Bearer "+accessToken }});
