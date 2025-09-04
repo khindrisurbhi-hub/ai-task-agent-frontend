@@ -1,15 +1,14 @@
 // app.js
 
-// Helper to format date nicely
-function formatDate(isoString) {
-  if (!isoString) return "";
+// Format date nicely
+function formatDate(iso) {
+  if (!iso) return "";
   try {
-    const date = new Date(isoString);
-    return date.toLocaleString(undefined, { year:"numeric", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
-  } catch (e) { return isoString; }
+    return new Date(iso).toLocaleString(undefined, { year:"numeric", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" });
+  } catch(e){ return iso; }
 }
 
-// Add a new task
+// Add task
 async function addTask() {
   const accessToken = window.getAccessToken();
   if (!accessToken) { alert("Please sign in first."); return; }
@@ -19,66 +18,72 @@ async function addTask() {
   const dueDate = dueInput ? new Date(dueInput).toISOString() : undefined;
 
   try {
-    const response = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", {
+    const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", {
       method:"POST",
       headers:{ Authorization:"Bearer "+accessToken,"Content-Type":"application/json" },
-      body: JSON.stringify({ title:title, due:dueDate })
+      body: JSON.stringify({ title, due: dueDate })
     });
-    const task = await response.json();
-    alert("✅ Task added: "+task.title);
+    const task = await res.json();
+    alert("✅ Task added: " + task.title);
     listTasks();
-  } catch (err) { alert("❌ Failed to add task."); console.error(err); }
+  } catch(err){ console.error(err); alert("❌ Failed to add task."); }
 }
 
 // List tasks
-async function listTasks(filter="all") {
+async function listTasks() {
   const accessToken = window.getAccessToken();
   if (!accessToken) { alert("Please sign in first."); return; }
   try {
-    const response = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", { headers:{ Authorization:"Bearer "+accessToken }});
-    const data = await response.json();
+    const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", { headers:{ Authorization:"Bearer "+accessToken }});
+    const data = await res.json();
     const listEl = document.getElementById("tasksList");
     listEl.innerHTML = "";
     if(!data.items || data.items.length===0){ listEl.innerHTML="<li>No tasks found</li>"; return; }
+
     const now = new Date();
+    data.items.forEach(task=>{
+      const li = document.createElement("li");
+      let taskText = task.title + (task.due ? ` (Due: ${formatDate(task.due)})` : "");
+      li.textContent = taskText;
 
-    data.items.forEach((task)=>{
-      if(filter==="overdue" && (!task.due || new Date(task.due) >= now)) return;
-      if(filter==="completed" && task.status!=="completed") return;
+      if(task.status==="completed") li.className="completed";
+      else if(task.due && new Date(task.due)<now) li.className="overdue";
 
-      const li=document.createElement("li");
-      let taskText = task.title;
-      if(task.due) taskText += ` (Due: ${formatDate(task.due)})`;
-      li.textContent = task.status==="completed" ? "✔ "+taskText : taskText;
-
-      if(task.status!=="completed"){ 
-        const completeBtn=document.createElement("button"); 
-        completeBtn.textContent="Mark Complete"; 
-        completeBtn.onclick=()=>markTaskComplete(task.id); 
-        li.appendChild(completeBtn); 
+      if(task.status!=="completed") {
+        const completeBtn = document.createElement("button");
+        completeBtn.textContent="Complete";
+        completeBtn.onclick=()=>markTaskComplete(task.id);
+        li.appendChild(completeBtn);
       }
-
-      const deleteBtn=document.createElement("button"); 
-      deleteBtn.textContent="Delete"; 
-      deleteBtn.onclick=()=>deleteTask(task.id); 
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent="Delete";
+      deleteBtn.onclick=()=>deleteTask(task.id);
       li.appendChild(deleteBtn);
-
       listEl.appendChild(li);
     });
   } catch(err){ console.error(err); alert("❌ Failed to fetch tasks."); }
 }
 
-// Mark Complete
-async function markTaskComplete(taskId){
-  const accessToken=window.getAccessToken(); if(!accessToken){ alert("Please sign in first."); return; }
-  await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`, { method:"PATCH", headers:{ Authorization:"Bearer "+accessToken,"Content-Type":"application/json"}, body:JSON.stringify({status:"completed"}) });
+// Mark complete
+async function markTaskComplete(taskId) {
+  const accessToken = window.getAccessToken();
+  if(!accessToken){ alert("Please sign in first."); return; }
+  await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`, {
+    method:"PATCH",
+    headers:{ Authorization:"Bearer "+accessToken,"Content-Type":"application/json"},
+    body:JSON.stringify({status:"completed"})
+  });
   listTasks();
 }
 
-// Delete Task
-async function deleteTask(taskId){
-  const accessToken=window.getAccessToken(); if(!accessToken){ alert("Please sign in first."); return; }
-  await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`, { method:"DELETE", headers:{ Authorization:"Bearer "+accessToken }});
+// Delete task
+async function deleteTask(taskId) {
+  const accessToken = window.getAccessToken();
+  if(!accessToken){ alert("Please sign in first."); return; }
+  await fetch(`https://tasks.googleapis.com/tasks/v1/lists/@default/tasks/${taskId}`, {
+    method:"DELETE",
+    headers:{ Authorization:"Bearer "+accessToken }
+  });
   listTasks();
 }
 
@@ -104,44 +109,61 @@ if("webkitSpeechRecognition" in window || "SpeechRecognition" in window){
     const transcript=event.results[0][0].transcript.toLowerCase();
     document.getElementById("log").innerHTML += `<div>🗣 You said: ${transcript}</div>`;
 
-    if(transcript.startsWith("add task")){
+    if(transcript.startsWith("add task")) {
       const title=transcript.slice(8).trim();
       if(title){ document.getElementById("taskTitle").value=title; addTask(); }
-    } else if(transcript.includes("list tasks")){ listTasks(); }
-    else if(transcript.includes("list overdue tasks")){ listTasks("overdue"); }
-    else if(transcript.includes("list completed tasks")){ listTasks("completed"); }
-    else if(transcript.startsWith("delete task")){
-      const title=transcript.slice(11).trim().toLowerCase();
-      deleteTaskByTitle(title);
-    } else if(transcript.startsWith("complete task")){
-      const title=transcript.slice(13).trim().toLowerCase();
+    } else if(transcript.includes("list tasks")) listTasks();
+    else if(transcript.includes("complete task")) {
+      // simple match by title
+      const title=transcript.replace("complete task","").trim();
       completeTaskByTitle(title);
-    }
+    } else if(transcript.includes("delete task")) {
+      const title=transcript.replace("delete task","").trim();
+      deleteTaskByTitle(title);
+    } else if(transcript.includes("list overdue tasks")) listTasksFiltered("overdue");
+    else if(transcript.includes("list completed tasks")) listTasksFiltered("completed");
   };
 
-  document.getElementById("listenBtn").onclick = () => recognition.start();
-  document.getElementById("stopBtn").onclick = () => recognition.stop();
+  document.getElementById("listenBtn").onclick = ()=>recognition.start();
+  document.getElementById("stopBtn").onclick = ()=>recognition.stop();
 } else {
   alert("⚠️ Your browser does not support Speech Recognition.");
 }
 
-// Helper functions for voice commands by title
-async function deleteTaskByTitle(title){
-  const accessToken = window.getAccessToken();
-  if(!accessToken) return;
-  const response = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", { headers:{ Authorization:"Bearer "+accessToken }});
-  const data = await response.json();
-  if(!data.items) return;
-  const task = data.items.find(t => t.title.toLowerCase() === title);
-  if(task) deleteTask(task.id);
+// Helper: complete task by title
+async function completeTaskByTitle(title){
+  const accessToken=window.getAccessToken(); if(!accessToken){ alert("Sign in first"); return; }
+  const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks",{ headers:{ Authorization:"Bearer "+accessToken }});
+  const data=await res.json();
+  const task = data.items.find(t=>t.title.toLowerCase()===title.toLowerCase());
+  if(task) await markTaskComplete(task.id);
 }
 
-async function completeTaskByTitle(title){
-  const accessToken = window.getAccessToken();
-  if(!accessToken) return;
-  const response = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", { headers:{ Authorization:"Bearer "+accessToken }});
-  const data = await response.json();
-  if(!data.items) return;
-  const task = data.items.find(t => t.title.toLowerCase() === title);
-  if(task) markTaskComplete(task.id);
+// Helper: delete task by title
+async function deleteTaskByTitle(title){
+  const accessToken=window.getAccessToken(); if(!accessToken){ alert("Sign in first"); return; }
+  const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks",{ headers:{ Authorization:"Bearer "+accessToken }});
+  const data=await res.json();
+  const task = data.items.find(t=>t.title.toLowerCase()===title.toLowerCase());
+  if(task) await deleteTask(task.id);
+}
+
+// Filtered list
+async function listTasksFiltered(type){
+  const accessToken = window.getAccessToken(); if(!accessToken){ alert("Sign in first"); return; }
+  const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks",{ headers:{ Authorization:"Bearer "+accessToken }});
+  const data = await res.json();
+  const listEl = document.getElementById("tasksList"); listEl.innerHTML="";
+  if(!data.items || data.items.length===0){ listEl.innerHTML="<li>No tasks</li>"; return; }
+  const now = new Date();
+  data.items.forEach(task=>{
+    let show=false;
+    if(type==="completed" && task.status==="completed") show=true;
+    else if(type==="overdue" && task.status!=="completed" && task.due && new Date(task.due)<now) show=true;
+    if(show){
+      const li=document.createElement("li");
+      li.textContent = task.title + (task.due ? ` (Due: ${formatDate(task.due)})` : "");
+      listEl.appendChild(li);
+    }
+  });
 }
