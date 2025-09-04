@@ -45,10 +45,12 @@
   <div id="log"></div>
 
   <script>
+    let accessToken = null; // ✅ store access token
+
     // ✅ Initialize Google Sign-In
     window.onload = function () {
       google.accounts.id.initialize({
-        client_id: CLIENT_ID,   // now taken from config.js
+        client_id: CLIENT_ID,   // from config.js
         callback: handleCredentialResponse,
         ux_mode: 'popup'
       });
@@ -61,11 +63,23 @@
       google.accounts.id.prompt(); // optional auto prompt
     };
 
-    // ✅ Handle login response
+    // ✅ Handle login response (ID token + request access token)
     function handleCredentialResponse(response) {
-      console.log("JWT ID token:", response.credential);
-      document.getElementById("statusText").innerText = "✅ Signed in!";
-      alert("Login successful! Now you can use Tasks.");
+      console.log("ID Token:", response.credential);
+
+      // Request an access token for Google Tasks API
+      const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: "https://www.googleapis.com/auth/tasks",
+        callback: (tokenResponse) => {
+          accessToken = tokenResponse.access_token;
+          console.log("Access Token:", accessToken);
+          document.getElementById("statusText").innerText = "✅ Signed in with access!";
+          alert("Login successful! Now you can use Google Tasks.");
+        }
+      });
+
+      tokenClient.requestAccessToken();
     }
   </script>
 </body>
