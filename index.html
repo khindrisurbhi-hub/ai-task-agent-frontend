@@ -29,6 +29,7 @@
   
   <!-- ✅ Google Sign-In button -->
   <div id="g_id_signin"></div>
+  <button id="signOutBtn" style="display:none">Sign Out</button>
   
   <!-- Status -->
   <p id="statusText"></p>
@@ -45,12 +46,13 @@
   <div id="log"></div>
 
   <script>
-    let accessToken = null; // ✅ store access token
+    let accessToken = null;
+    let tokenClient;
 
     // ✅ Initialize Google Sign-In
     window.onload = function () {
       google.accounts.id.initialize({
-        client_id: CLIENT_ID,   // from config.js
+        client_id: CLIENT_ID,
         callback: handleCredentialResponse,
         ux_mode: 'popup'
       });
@@ -60,21 +62,31 @@
         { theme: "outline", size: "large", width: 250 }
       );
 
-      google.accounts.id.prompt(); // optional auto prompt
+      google.accounts.id.prompt();
+
+      // Sign-out handler
+      document.getElementById("signOutBtn").onclick = () => {
+        accessToken = null;
+        google.accounts.id.disableAutoSelect();
+        document.getElementById("statusText").innerText = "🚪 Signed out";
+        document.getElementById("signOutBtn").style.display = "none";
+        document.getElementById("g_id_signin").style.display = "block";
+      };
     };
 
-    // ✅ Handle login response (request access token)
+    // ✅ Handle login response
     function handleCredentialResponse(response) {
       console.log("ID Token:", response.credential);
 
-      // Request an access token for Google Tasks API
-      const tokenClient = google.accounts.oauth2.initTokenClient({
+      tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
         callback: (tokenResponse) => {
           accessToken = tokenResponse.access_token;
           console.log("Access Token:", accessToken);
           document.getElementById("statusText").innerText = "✅ Signed in with access!";
+          document.getElementById("signOutBtn").style.display = "inline-block";
+          document.getElementById("g_id_signin").style.display = "none";
           alert("Login successful! Now you can use Google Tasks.");
         }
       });
