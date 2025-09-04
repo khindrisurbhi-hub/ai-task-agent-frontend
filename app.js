@@ -1,5 +1,3 @@
-// app.js
-
 let accessToken = null;
 
 // Hook into the global accessToken from index.html
@@ -91,3 +89,4 @@ window.onload = () => {
   document.getElementById("addTaskBtn").onclick = addTask;
   document.getElementById("listBtn").onclick = listTasks;
 };
+
