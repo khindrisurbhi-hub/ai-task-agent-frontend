@@ -7,31 +7,23 @@
 
 <!-- Google Identity Services -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<!-- chrono.js for date parsing -->
 <script src="https://unpkg.com/chrono-node/dist/chrono.min.js"></script>
 
-<!-- Config and app logic -->
+<!-- App config + logic -->
 <script src="config.js"></script>
 <script src="app.js" defer></script>
 
 <style>
-  body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-  input, button { margin: 5px; padding: 10px; font-size: 16px; }
-  #tasksList { margin-top: 20px; list-style-type: none; padding: 0; }
-  #log { border:1px solid #ccc; padding:10px; height:200px; overflow-y:scroll; margin-top: 20px; text-align:left; font-size:14px; }
-  
-  /* Google Sign-In button responsive */
-  #g_id_signin {
-    width: 100% !important;
-    max-width: 320px;
-    margin: 20px auto !important;
-    display: block !important;
-  }
+body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+input, button { margin: 5px; padding: 10px; font-size: 16px; }
+#tasksList { margin-top: 20px; list-style-type: none; padding: 0; }
+#log { border:1px solid #ccc; padding:10px; height:200px; overflow-y:scroll; margin-top: 20px; text-align:left; font-size:14px; }
 
-  button { min-width: 120px; }
-  li { margin: 8px 0; }
+#g_id_signin { width: 100% !important; max-width: 320px; margin: 20px auto !important; display: block !important; }
+button { min-width: 120px; }
+li { margin: 8px 0; }
 
-  .command-list { margin-top:10px; font-size:14px; color:#555; text-align:left; max-width: 350px; margin-left:auto; margin-right:auto; }
+.command-list { margin-top:10px; font-size:14px; color:#555; text-align:left; max-width: 350px; margin-left:auto; margin-right:auto; }
 </style>
 </head>
 <body>
@@ -39,11 +31,10 @@
 <h1>AI Task Agent</h1>
 
 <!-- Google Sign-In -->
-<div id="g_id_signin"></div>
+<div id="g_id_signin" style="display:block"></div>
 <button id="signOutBtn" style="display:none">Sign Out</button>
 <p id="statusText"></p>
 
-<!-- Task controls -->
 <form onsubmit="return false;">
   <input id="taskTitle" placeholder="Task title">
   <input id="taskDue" placeholder="Due date (optional)">
@@ -58,34 +49,29 @@
 <div id="log"></div>
 
 <div class="command-list">
-  <strong>Voice commands:</strong><br>
-  - "Add task [task name]"<br>
-  - "List tasks"<br>
-  - "Complete task [task name]"<br>
-  - "Delete task [task name]"<br>
-  - "List overdue tasks"<br>
-  - "List completed tasks"
+<strong>Voice commands:</strong><br>
+- "Add task [task name]"<br>
+- "List tasks"<br>
+- "Complete task [task name]"<br>
+- "Delete task [task name]"<br>
+- "List overdue tasks"<br>
+- "List completed tasks"
 </div>
 
 <script>
 let accessToken = null;
 let tokenClient;
 
-function renderGoogleButton() {
-  const signinDiv = document.getElementById("g_id_signin");
-  signinDiv.style.display = "block";
-  google.accounts.id.renderButton(signinDiv, {
-    theme: "outline",
-    size: "large",
-    width: window.innerWidth < 400 ? window.innerWidth - 40 : 300
-  });
-}
-
+// Initialize Google Sign-In
 window.addEventListener("DOMContentLoaded", () => {
-  renderGoogleButton();
-  google.accounts.id.prompt();
+  google.accounts.id.initialize({
+    client_id: CLIENT_ID,
+    callback: handleCredentialResponse,
+    ux_mode: 'popup'
+  });
 
-  // Sign-out
+  renderGoogleButton();
+
   document.getElementById("signOutBtn").onclick = () => {
     accessToken = null;
     google.accounts.id.disableAutoSelect();
@@ -94,18 +80,31 @@ window.addEventListener("DOMContentLoaded", () => {
     renderGoogleButton();
   };
 
-  // Typed input buttons
-  document.getElementById("addTaskBtn").onclick = (e) => { e.preventDefault(); addTask(); };
-  document.getElementById("listBtn").onclick = (e) => { e.preventDefault(); listTasks(); };
+  document.getElementById("addTaskBtn").onclick = addTask;
+  document.getElementById("listBtn").onclick = listTasks;
 });
 
-// Re-render button on resize
-window.addEventListener("resize", () => {
+// Render Google Sign-In button
+function renderGoogleButton() {
   const signinDiv = document.getElementById("g_id_signin");
-  if(signinDiv.style.display !== "none") renderGoogleButton();
-});
+  signinDiv.style.display = "block";
+  signinDiv.innerHTML = "";
 
-// Handle Google Sign-In
+  google.accounts.id.renderButton(signinDiv, {
+    theme: "outline",
+    size: "large",
+    width: 300
+  });
+
+  // Prompt and prevent auto-select hiding the button
+  google.accounts.id.prompt(notification => {
+    if(notification.isNotDisplayed() || notification.isSkippedMoment()) {
+      signinDiv.style.display = "block";
+    }
+  });
+}
+
+// Handle login response
 function handleCredentialResponse(response) {
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
@@ -123,6 +122,7 @@ function handleCredentialResponse(response) {
 
 window.getAccessToken = () => accessToken;
 </script>
+
 </body>
 </html>
 
