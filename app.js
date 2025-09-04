@@ -1,12 +1,8 @@
-let accessToken = null;
-
-// Hook into the global accessToken from index.html
-window.setAccessToken = function (token) {
-  accessToken = token;
-};
+// app.js
 
 // ✅ Add a new task
 async function addTask() {
+  const accessToken = window.getAccessToken();
   if (!accessToken) {
     alert("Please sign in first.");
     return;
@@ -49,6 +45,7 @@ async function addTask() {
 
 // ✅ List tasks
 async function listTasks() {
+  const accessToken = window.getAccessToken();
   if (!accessToken) {
     alert("Please sign in first.");
     return;
@@ -89,4 +86,3 @@ window.onload = () => {
   document.getElementById("addTaskBtn").onclick = addTask;
   document.getElementById("listBtn").onclick = listTasks;
 };
-
