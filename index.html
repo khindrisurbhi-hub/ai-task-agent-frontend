@@ -45,13 +45,10 @@
   <div id="log"></div>
 
   <script>
-    // ✅ Google OAuth Client ID
-    const CLIENT_ID = "943220084061-ujlua6j24n7amv6tuufhtuaueh5rbf00.apps.googleusercontent.com";
-
     // ✅ Initialize Google Sign-In
     window.onload = function () {
       google.accounts.id.initialize({
-        client_id: CLIENT_ID,
+        client_id: CLIENT_ID,   // now taken from config.js
         callback: handleCredentialResponse,
         ux_mode: 'popup'
       });
@@ -69,7 +66,6 @@
       console.log("JWT ID token:", response.credential);
       document.getElementById("statusText").innerText = "✅ Signed in!";
       alert("Login successful! Now you can use Tasks.");
-      // Later: send response.credential to backend for Google Tasks API
     }
   </script>
 </body>
