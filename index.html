@@ -5,13 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Task Agent</title>
   
-  <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-
-  <!-- chrono.js for date parsing -->
-  <script src="https://unpkg.com/chrono-node/dist/chrono.min.js"></script>
-  
-  <!-- App config + logic -->
   <script src="config.js"></script>
   <script src="app.js" defer></script>
 
@@ -20,35 +14,22 @@
     input, button { margin: 5px; padding: 10px; font-size: 16px; }
     #tasksList { margin-top: 20px; list-style-type: none; padding: 0; }
     #log { border:1px solid #ccc; padding:10px; height:200px; overflow-y:scroll; margin-top: 20px; text-align:left; font-size:14px; }
-    
-    /* Google Sign-In button responsive */
-    #g_id_signin {
-      width: 100% !important;
-      max-width: 320px;
-      margin: 20px auto !important;
-      display: block !important;
-    }
 
-    /* Buttons responsive */
+    #g_id_signin { width: 100% !important; max-width: 320px; margin: 20px auto !important; display: block !important; }
     button { min-width: 120px; }
-
-    /* Task list styling */
     li { margin: 8px 0; }
-
     .command-list { margin-top:10px; font-size:14px; color:#555; text-align:left; max-width: 350px; margin-left:auto; margin-right:auto; }
   </style>
 </head>
 <body>
 
   <h1>AI Task Agent</h1>
-  
-  <!-- Google Sign-In button -->
+
   <div id="g_id_signin"></div>
   <button id="signOutBtn" style="display:none">Sign Out</button>
-  
+
   <p id="statusText"></p>
 
-  <!-- Task controls -->
   <input id="taskTitle" placeholder="Task title">
   <input id="taskDue" placeholder="Due date (optional)">
   <br>
@@ -56,7 +37,7 @@
   <button id="listBtn">List Tasks</button>
   <button id="listenBtn">Start Listening</button>
   <button id="stopBtn" style="display:none">Stop Listening</button>
-  
+
   <ul id="tasksList"></ul>
   <div id="log"></div>
 
@@ -78,11 +59,11 @@
       const signinDiv = document.getElementById("g_id_signin");
       signinDiv.style.display = "block";
 
-      // Initialize Google Sign-In
       google.accounts.id.initialize({
         client_id: CLIENT_ID,
         callback: handleCredentialResponse,
-        ux_mode: 'popup'
+        ux_mode: 'redirect',
+        auto_select: false
       });
 
       google.accounts.id.renderButton(signinDiv, {
@@ -91,9 +72,6 @@
         width: 300
       });
 
-      google.accounts.id.prompt();
-
-      // Sign-out
       document.getElementById("signOutBtn").onclick = () => {
         accessToken = null;
         google.accounts.id.disableAutoSelect();
@@ -102,9 +80,8 @@
         signinDiv.style.display = "block";
       };
 
-      // Hook task buttons
       document.getElementById("addTaskBtn").onclick = addTask;
-      document.getElementById("listBtn").onclick = listTasks;
+      document.getElementById("listBtn").onclick = () => listTasks();
     });
 
     function handleCredentialResponse(response) {
@@ -127,4 +104,3 @@
   </script>
 </body>
 </html>
-
