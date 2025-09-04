@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -11,17 +11,31 @@
   <!-- chrono.js for date parsing -->
   <script src="https://unpkg.com/chrono-node/dist/chrono.min.js"></script>
   
-  <!-- Your app config + logic -->
+  <!-- App config + logic -->
   <script src="config.js"></script>
   <script src="app.js" defer></script>
 
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin-top: 30px; }
-    #g_id_signin { margin: 20px auto; }
-    input, button { margin: 5px; padding: 8px; }
+    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+    input, button { margin: 5px; padding: 10px; font-size: 16px; }
     #tasksList { margin-top: 20px; list-style-type: none; padding: 0; }
-    #log { border:1px solid #ccc; padding:10px; height:200px; overflow-y:scroll; margin-top: 20px; text-align:left; }
-    .command-list { margin-top:10px; font-size:14px; color:#555; }
+    #log { border:1px solid #ccc; padding:10px; height:200px; overflow-y:scroll; margin-top: 20px; text-align:left; font-size:14px; }
+    
+    /* Google Sign-In button responsive */
+    #g_id_signin {
+      width: 100% !important;
+      max-width: 320px;
+      margin: 20px auto !important;
+      display: block !important;
+    }
+
+    /* Buttons responsive */
+    button { min-width: 120px; }
+
+    /* Task list styling */
+    li { margin: 8px 0; }
+
+    .command-list { margin-top:10px; font-size:14px; color:#555; text-align:left; max-width: 350px; margin-left:auto; margin-right:auto; }
   </style>
 </head>
 <body>
@@ -32,12 +46,12 @@
   <div id="g_id_signin"></div>
   <button id="signOutBtn" style="display:none">Sign Out</button>
   
-  <!-- Status -->
   <p id="statusText"></p>
 
   <!-- Task controls -->
   <input id="taskTitle" placeholder="Task title">
   <input id="taskDue" placeholder="Due date (optional)">
+  <br>
   <button id="addTaskBtn">Add Task</button>
   <button id="listBtn">List Tasks</button>
   <button id="listenBtn">Start Listening</button>
@@ -61,17 +75,21 @@
     let tokenClient;
 
     window.addEventListener("DOMContentLoaded", () => {
-      // Google Sign-In
+      const signinDiv = document.getElementById("g_id_signin");
+      signinDiv.style.display = "block";
+
+      // Initialize Google Sign-In
       google.accounts.id.initialize({
         client_id: CLIENT_ID,
         callback: handleCredentialResponse,
         ux_mode: 'popup'
       });
 
-      google.accounts.id.renderButton(
-        document.getElementById("g_id_signin"),
-        { theme: "outline", size: "large", width: 250 }
-      );
+      google.accounts.id.renderButton(signinDiv, {
+        theme: "outline",
+        size: "large",
+        width: 300
+      });
 
       google.accounts.id.prompt();
 
@@ -81,7 +99,7 @@
         google.accounts.id.disableAutoSelect();
         document.getElementById("statusText").innerText = "🚪 Signed out";
         document.getElementById("signOutBtn").style.display = "none";
-        document.getElementById("g_id_signin").style.display = "block";
+        signinDiv.style.display = "block";
       };
 
       // Hook task buttons
