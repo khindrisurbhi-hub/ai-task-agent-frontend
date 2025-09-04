@@ -49,8 +49,9 @@
     let accessToken = null;
     let tokenClient;
 
-    // ✅ Initialize Google Sign-In
-    window.onload = function () {
+    // ✅ Initialize everything on DOM ready
+    window.addEventListener("DOMContentLoaded", () => {
+      // Google Sign-In setup
       google.accounts.id.initialize({
         client_id: CLIENT_ID,
         callback: handleCredentialResponse,
@@ -72,7 +73,11 @@
         document.getElementById("signOutBtn").style.display = "none";
         document.getElementById("g_id_signin").style.display = "block";
       };
-    };
+
+      // ✅ Hook task buttons here (so no override issues)
+      document.getElementById("addTaskBtn").onclick = addTask;
+      document.getElementById("listBtn").onclick = listTasks;
+    });
 
     // ✅ Handle login response
     function handleCredentialResponse(response) {
@@ -99,3 +104,4 @@
   </script>
 </body>
 </html>
+
