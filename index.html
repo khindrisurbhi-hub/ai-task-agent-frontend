@@ -1,85 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AI Task Agent</title>
-
-  <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="https://apis.google.com/js/api.js" async defer></script>
-  <script src="https://unpkg.com/chrono-node/dist/chrono.min.js"></script>
-
-  <script src="config.js"></script>
-  <script src="app.js" defer></script>
-
-  <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-    input, button { margin: 5px; padding: 10px; font-size: 16px; }
-    #tasksList, #calendarList, #gmailList, #contactsList { margin-top: 20px; list-style-type: none; padding: 0; }
-    #log { border:1px solid #ccc; padding:10px; height:200px; overflow-y:scroll; margin-top: 20px; text-align:left; font-size:14px; }
-    #g_id_signin { width: 100% !important; max-width: 320px; margin: 20px auto !important; display: block !important; }
-    button { min-width: 120px; }
-    li { margin: 8px 0; }
-    .completed { color: green; }
-    .overdue { color: red; }
-    .section { border-top: 1px solid #ddd; padding-top: 15px; margin-top: 20px; }
-    .command-list { margin-top:10px; font-size:14px; color:#555; text-align:left; max-width: 350px; margin-left:auto; margin-right:auto; }
-  </style>
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script type="module" src="app.js"></script>
 </head>
 <body>
   <h1>AI Task Agent</h1>
 
-  <div id="g_id_signin"></div>
-  <button id="signOutBtn" style="display:none">Sign Out</button>
-  <p id="statusText"></p>
-
-  <div class="section">
-    <h2>Tasks</h2>
-    <input id="taskTitle" placeholder="Task title">
-    <input id="taskDue" placeholder="Due date (optional)">
-    <br>
-    <button id="addTaskBtn">Add Task</button>
-    <button id="listBtn">List Tasks</button>
-    <ul id="tasksList"></ul>
+  <div id="auth-section">
+    <div id="g_id_onload"
+      data-client_id="YOUR_CLIENT_ID_HERE.apps.googleusercontent.com"
+      data-auto_prompt="false"
+      data-callback="handleCredentialResponse">
+    </div>
+    <div class="g_id_signin" data-type="standard"></div>
+    <button id="signout-button" style="display:none;">Sign Out</button>
   </div>
 
-  <div class="section">
-    <h2>Calendar</h2>
-    <button id="calendarBtn">Show Calendar</button>
-    <ul id="calendarList"></ul>
-  </div>
+  <hr/>
 
-  <div class="section">
-    <h2>Gmail</h2>
-    <button id="gmailBtn">Show Gmail</button>
-    <ul id="gmailList"></ul>
-  </div>
+  <h2>Tasks</h2>
+  <input id="task-input" placeholder="Task name"/>
+  <input id="task-date" type="date" />
+  <button id="add-task">Add Task</button>
+  <button id="list-tasks">List Tasks</button>
+  <ul id="tasks-list"></ul>
 
-  <div class="section">
-    <h2>Contacts</h2>
-    <button id="contactsBtn">Show Contacts</button>
-    <ul id="contactsList"></ul>
-  </div>
+  <h2>Calendar</h2>
+  <button id="show-calendar">Show Calendar</button>
+  <ul id="calendar-list"></ul>
 
-  <div class="section">
-    <h2>Voice Commands</h2>
-    <button id="listenBtn">Start Listening</button>
-    <button id="stopBtn" style="display:none">Stop Listening</button>
-    <div id="log"></div>
-  </div>
+  <h2>Gmail</h2>
+  <button id="show-gmail">Show Gmail</button>
+  <ul id="gmail-list"></ul>
 
-  <div class="command-list">
-    <strong>Voice commands:</strong><br>
-    - "Add task [task name]"<br>
-    - "List tasks"<br>
-    - "Complete task [task name]"<br>
-    - "Delete task [task name]"<br>
-    - "List overdue tasks"<br>
-    - "List completed tasks"<br>
-    - "Show calendar"<br>
-    - "Show Gmail"<br>
-    - "Show contacts"
-  </div>
+  <h2>Contacts</h2>
+  <button id="show-contacts">Show Contacts</button>
+  <ul id="contacts-list"></ul>
+
+  <h2>Voice Commands</h2>
+  <button id="start-voice">🎤 Start Listening</button>
+  <p id="voice-status">Not listening</p>
 </body>
 </html>
