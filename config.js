@@ -1,16 +1,11 @@
-// config.js
-const CLIENT_ID = "943220084061-ujlua6j24n7amv6tuufhtuaueh5rbf00.apps.googleusercontent.com";
+// ✅ Replace with your real OAuth 2.0 Client ID from Google Cloud Console
+const CLIENT_ID = "YOUR_CLIENT_ID_HERE.apps.googleusercontent.com";
 
-const SCOPES = [
-  "https://www.googleapis.com/auth/tasks",
-  "https://www.googleapis.com/auth/calendar.readonly",
-  "https://www.googleapis.com/auth/gmail.readonly",
-  "https://www.googleapis.com/auth/contacts.readonly"
-].join(" ");
+const SCOPES = `
+  https://www.googleapis.com/auth/tasks
+  https://www.googleapis.com/auth/calendar.readonly
+  https://www.googleapis.com/auth/gmail.readonly
+  https://www.googleapis.com/auth/contacts.readonly
+`;
 
-const DISCOVERY_DOCS = [
-  "https://www.googleapis.com/discovery/v1/apis/tasks/v1/rest",
-  "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest",
-  "https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest",
-  "https://people.googleapis.com/$discovery/rest?version=v1"
-];
+export { CLIENT_ID, SCOPES };
