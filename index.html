@@ -1,83 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Task Agent</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Task Agent</title>
 
-<!-- Google Identity Services -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="https://unpkg.com/chrono-node/dist/chrono.min.js"></script>
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://apis.google.com/js/api.js" async defer></script>
+  <script src="https://unpkg.com/chrono-node/dist/chrono.min.js"></script>
 
-<script src="config.js"></script>
-<script src="app.js" defer></script>
+  <script src="config.js"></script>
+  <script src="app.js" defer></script>
 
-<style>
-body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-input, button { margin: 5px; padding: 10px; font-size: 16px; }
-#tasksList, #calendarList, #gmailList, #contactsList {
-  margin-top: 20px; list-style-type: none; padding: 0;
-}
-#log { border:1px solid #ccc; padding:10px; height:200px; overflow-y:scroll; margin-top: 20px; text-align:left; font-size:14px; }
-#g_id_signin { width: 100% !important; max-width: 320px; margin: 20px auto !important; display: block !important; }
-button { min-width: 120px; }
-li { margin: 8px 0; }
-.completed { color: green; }
-.overdue { color: red; }
-.section-title { margin-top: 30px; font-weight: bold; font-size: 18px; }
-.command-list { margin-top:10px; font-size:14px; color:#555; text-align:left; max-width: 350px; margin-left:auto; margin-right:auto; }
-</style>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+    input, button { margin: 5px; padding: 10px; font-size: 16px; }
+    #tasksList, #calendarList, #gmailList, #contactsList { margin-top: 20px; list-style-type: none; padding: 0; }
+    #log { border:1px solid #ccc; padding:10px; height:200px; overflow-y:scroll; margin-top: 20px; text-align:left; font-size:14px; }
+    #g_id_signin { width: 100% !important; max-width: 320px; margin: 20px auto !important; display: block !important; }
+    button { min-width: 120px; }
+    li { margin: 8px 0; }
+    .completed { color: green; }
+    .overdue { color: red; }
+    .section { border-top: 1px solid #ddd; padding-top: 15px; margin-top: 20px; }
+    .command-list { margin-top:10px; font-size:14px; color:#555; text-align:left; max-width: 350px; margin-left:auto; margin-right:auto; }
+  </style>
 </head>
 <body>
+  <h1>AI Task Agent</h1>
 
-<h1>AI Task Agent</h1>
+  <div id="g_id_signin"></div>
+  <button id="signOutBtn" style="display:none">Sign Out</button>
+  <p id="statusText"></p>
 
-<div id="g_id_signin"></div>
-<button id="signOutBtn" style="display:none">Sign Out</button>
-<p id="statusText"></p>
+  <div class="section">
+    <h2>Tasks</h2>
+    <input id="taskTitle" placeholder="Task title">
+    <input id="taskDue" placeholder="Due date (optional)">
+    <br>
+    <button id="addTaskBtn">Add Task</button>
+    <button id="listBtn">List Tasks</button>
+    <ul id="tasksList"></ul>
+  </div>
 
-<!-- Tasks -->
-<input id="taskTitle" placeholder="Task title">
-<input id="taskDue" placeholder="Due date (optional)">
-<br>
-<button id="addTaskBtn">Add Task</button>
-<button id="listBtn">List Tasks</button>
-<ul id="tasksList"></ul>
+  <div class="section">
+    <h2>Calendar</h2>
+    <button id="calendarBtn">Show Calendar</button>
+    <ul id="calendarList"></ul>
+  </div>
 
-<!-- Calendar -->
-<div class="section-title">📅 Google Calendar</div>
-<button id="calendarBtn">Show Events</button>
-<ul id="calendarList"></ul>
+  <div class="section">
+    <h2>Gmail</h2>
+    <button id="gmailBtn">Show Gmail</button>
+    <ul id="gmailList"></ul>
+  </div>
 
-<!-- Gmail -->
-<div class="section-title">📧 Gmail</div>
-<button id="gmailBtn">Show Emails</button>
-<ul id="gmailList"></ul>
+  <div class="section">
+    <h2>Contacts</h2>
+    <button id="contactsBtn">Show Contacts</button>
+    <ul id="contactsList"></ul>
+  </div>
 
-<!-- Contacts -->
-<div class="section-title">👥 Contacts</div>
-<button id="contactsBtn">Show Contacts</button>
-<ul id="contactsList"></ul>
+  <div class="section">
+    <h2>Voice Commands</h2>
+    <button id="listenBtn">Start Listening</button>
+    <button id="stopBtn" style="display:none">Stop Listening</button>
+    <div id="log"></div>
+  </div>
 
-<!-- Voice Control -->
-<div class="section-title">🎙 Voice Commands</div>
-<button id="listenBtn">Start Listening</button>
-<button id="stopBtn" style="display:none">Stop Listening</button>
-<div id="log"></div>
-
-<div class="command-list">
-<strong>Voice commands:</strong><br>
-- "Add task [task name]"<br>
-- "List tasks"<br>
-- "Complete task [task name]"<br>
-- "Delete task [task name]"<br>
-- "List overdue tasks"<br>
-- "List completed tasks"<br>
-- "Show calendar"<br>
-- "Show Gmail"<br>
-- "Show contacts"
-</div>
-
+  <div class="command-list">
+    <strong>Voice commands:</strong><br>
+    - "Add task [task name]"<br>
+    - "List tasks"<br>
+    - "Complete task [task name]"<br>
+    - "Delete task [task name]"<br>
+    - "List overdue tasks"<br>
+    - "List completed tasks"<br>
+    - "Show calendar"<br>
+    - "Show Gmail"<br>
+    - "Show contacts"
+  </div>
 </body>
 </html>
-
