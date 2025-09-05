@@ -55,7 +55,12 @@ Say commands like:
 
 ## Privacy & Data Access  
 
-- This app only requests **read access** for Gmail, Calendar, and Contacts.  
+- This app only requests the following **Google OAuth Scopes**:  
+  - `https://www.googleapis.com/auth/tasks`  
+  - `https://www.googleapis.com/auth/calendar.readonly`  
+  - `https://www.googleapis.com/auth/gmail.readonly`  
+  - `https://www.googleapis.com/auth/contacts.readonly`  
+
 - It does **not** send or share your data anywhere outside Google’s APIs.  
 - It does **not** access Google Keep, Reminders, or third-party apps.  
 - It does **not** store any data on external servers.  
@@ -63,5 +68,5 @@ Say commands like:
 ---
 
 ## License  
-MIT License.
+MIT License.  
 
