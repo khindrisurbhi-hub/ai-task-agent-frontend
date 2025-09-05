@@ -1,73 +1,67 @@
-# AI Task Agent
+# AI Task Agent  
 
-AI Task Agent is a web-based productivity assistant that connects with your Google Workspace.  
-It helps you manage tasks and stay organized using **Google Tasks, Calendar, Gmail, and Contacts** — all in one place.  
-You can interact through **buttons** or **voice commands**.
-
----
-
-## ✨ Features
-- **Google Tasks**
-  - Add new tasks
-  - List tasks
-  - Complete tasks
-  - Delete tasks
-- **Google Calendar**
-  - View upcoming calendar events (read-only)
-- **Gmail**
-  - View your recent emails (read-only)
-- **Google Contacts**
-  - View saved contacts (read-only)
-- **Voice Commands**
-  - Add tasks by saying: *"Add task buy groceries"*
-  - List tasks by saying: *"List tasks"*
-  - Complete/delete tasks by voice
-  - Show calendar, Gmail, or contacts with commands
+AI Task Agent is a web application that integrates with Google services to help you manage your daily life. It allows you to:  
+- ✅ Create, list, complete, and delete **Google Tasks**  
+- ✅ View your upcoming **Google Calendar events**  
+- ✅ See your latest **Gmail emails** (subject + snippet only)  
+- ✅ Access your saved **Google Contacts**  
+- ✅ Use **voice commands** to interact hands-free  
 
 ---
 
-## 🔐 Data Access & Privacy
-- The app **only** requests these Google OAuth scopes:
-  - `https://www.googleapis.com/auth/tasks` → Create, edit, and delete tasks
-  - `https://www.googleapis.com/auth/calendar.readonly` → Read calendar events
-  - `https://www.googleapis.com/auth/gmail.readonly` → Read Gmail snippets/metadata
-  - `https://www.googleapis.com/auth/contacts.readonly` → Read contacts
-- **No data is shared with third parties.**
-- **No sensitive Gmail/Calendar/Contacts modifications** are made — they are **read-only**.
-- The app does **not** access Google Keep, Reminders, or other third-party apps.
+## Features  
+
+### Google Tasks  
+- Add new tasks with optional due dates  
+- View all tasks (overdue, completed, upcoming)  
+- Mark tasks as completed or delete them  
+
+### Google Calendar  
+- View up to 5 upcoming events from your primary calendar  
+
+### Gmail  
+- View the 5 most recent email subjects and snippets  
+
+### Google Contacts  
+- View up to 5 saved contacts (name + email)  
+
+### Voice Commands  
+Say commands like:  
+- `"Add task [task name]"`  
+- `"List tasks"`  
+- `"Show calendar"`  
+- `"Show Gmail"`  
+- `"Show contacts"`  
 
 ---
 
-## 🚀 Live Demo
-👉 [AI Task Agent](https://ai-task-agent-frontend.onrender.com)
+## Tech Stack  
+- **Frontend:** HTML, CSS, JavaScript  
+- **APIs:** Google Tasks API, Google Calendar API, Gmail API, People API (Contacts)  
+- **Authentication:** Google Identity Services (OAuth2)  
 
 ---
 
-## 📄 Policies
-- [Privacy Policy](https://ai-task-agent-frontend.onrender.com/privacy)  
-- [Terms of Service](https://ai-task-agent-frontend.onrender.com/terms)
+## Setup  
+
+1. Clone the repo  
+2. Add your Google **OAuth 2.0 Client ID** in `config.js`  
+3. Deploy frontend (we use [Render](https://render.com))  
+4. Set up your OAuth consent screen in Google Cloud Console  
+5. Add authorized domain:  
+   https://ai-task-agent-frontend.onrender.com  
 
 ---
 
-## ⚙️ Development
-- **Frontend:** HTML + Vanilla JS + Google Identity Services
-- **Backend:** Node.js + Express (hosted on Render)
-- **Speech Recognition:** Web Speech API
-- **Config:** `config.js` stores OAuth Client ID and scope settings
+## Privacy & Data Access  
+
+- This app only requests **read access** for Gmail, Calendar, and Contacts.  
+- It does **not** send or share your data anywhere outside Google’s APIs.  
+- It does **not** access Google Keep, Reminders, or third-party apps.  
+- It does **not** store any data on external servers.  
 
 ---
 
-## 🧑‍💻 Setup
-1. Clone this repo
-2. Update `config.js` with your Google OAuth **Client ID**
-3. Deploy backend & frontend to HTTPS domains
-4. Add your authorized domains in Google Cloud Console
-5. Run on `https://ai-task-agent-frontend.onrender.com`
-
----
-
-## 📜 License
-MIT License
-
----
+## License  
+MIT License.
 
