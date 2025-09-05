@@ -1,6 +1,6 @@
 // app.js
 
-/********* Small utilities *********/
+// ----------- Helpers -----------
 function formatDate(iso) {
   if (!iso) return "";
   try {
@@ -9,131 +9,79 @@ function formatDate(iso) {
       month: "short",
       day: "numeric",
       hour: "2-digit",
-      minute: "2-digit",
+      minute: "2-digit"
     });
-  } catch (e) {
-    return iso;
-  }
+  } catch (e) { return iso; }
 }
 
-function byId(id) {
-  return document.getElementById(id);
-}
-
-/********* Google Identity Services *********/
+// Global
+let recognition;
 let accessToken = null;
-let tokenClient = null;
-let tokenExpiry = 0; // epoch ms
+let tokenClient;
 
-async function ensureToken() {
-  // Refresh silently if token is missing/expired (GIS will do iframe flow)
-  const safetyMarginMs = 60 * 1000; // 1 min
-  if (!accessToken || Date.now() > tokenExpiry - safetyMarginMs) {
-    return new Promise((resolve, reject) => {
-      tokenClient.callback = (resp) => {
-        if (resp && resp.access_token) {
-          accessToken = resp.access_token;
-          // expires_in is seconds
-          tokenExpiry = Date.now() + (resp.expires_in || 1800) * 1000;
-          resolve(accessToken);
-        } else {
-          reject(new Error("No access token returned"));
-        }
-      };
-      // Try silent first; if it fails, GIS will still handle popup if needed
-      tokenClient.requestAccessToken({ prompt: "" });
-    });
-  }
-  return accessToken;
-}
+// ----------- Google Sign-In -----------
+window.addEventListener("DOMContentLoaded", () => {
+  const signinDiv = document.getElementById("g_id_signin");
 
-window.getAccessToken = () => accessToken;
-
-/********* Sign-in button wiring (called from index.html on DOMContentLoaded) *********/
-window._initSignIn = function _initSignIn() {
-  const signinDiv = byId("g_id_signin");
-
-  // Render One Tap / Button
   google.accounts.id.initialize({
     client_id: CLIENT_ID,
     callback: handleCredentialResponse,
-    ux_mode: "popup",
+    ux_mode: 'popup'
   });
-  google.accounts.id.renderButton(signinDiv, {
-    theme: "outline",
-    size: "large",
-    width: 300,
-  });
+
+  google.accounts.id.renderButton(signinDiv, { theme: "outline", size: "large", width: 300 });
   google.accounts.id.prompt();
 
-  // Set up token client (OAuth 2 token for APIs)
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: (resp) => {
-      if (resp && resp.access_token) {
-        accessToken = resp.access_token;
-        tokenExpiry = Date.now() + (resp.expires_in || 1800) * 1000;
-        byId("statusText").innerText = "✅ Signed in";
-        byId("signOutBtn").style.display = "inline-block";
-        byId("g_id_signin").style.display = "none";
-        // Optional: auto-load something for the reviewer
-        listTasks();
-      } else {
-        alert("Failed to obtain access token.");
-      }
-    },
-  });
-
-  // Sign out
-  byId("signOutBtn").onclick = () => {
+  document.getElementById("signOutBtn").onclick = () => {
     accessToken = null;
-    tokenExpiry = 0;
     google.accounts.id.disableAutoSelect();
-    byId("statusText").innerText = "🚪 Signed out";
-    byId("signOutBtn").style.display = "none";
+    document.getElementById("statusText").innerText = "🚪 Signed out";
+    document.getElementById("signOutBtn").style.display = "none";
     signinDiv.style.display = "block";
   };
 
   // Buttons
-  byId("addTaskBtn").onclick = addTask;
-  byId("listTasksBtn").onclick = listTasks;
-  byId("listEventsBtn").onclick = listCalendarEvents;
-  byId("listGmailBtn").onclick = listGmailMessages;
-  byId("listContactsBtn").onclick = listContacts;
+  document.getElementById("addTaskBtn").onclick = addTask;
+  document.getElementById("listBtn").onclick = listTasks;
+  document.getElementById("calendarBtn").onclick = listCalendarEvents;
+  document.getElementById("gmailBtn").onclick = listEmails;
+  document.getElementById("contactsBtn").onclick = listContacts;
+});
 
-  // Voice controls (if supported)
-  setupVoiceRecognition();
-};
-
-// Called by the Sign-In button flow (ID token step). We immediately request OAuth token.
 function handleCredentialResponse() {
-  tokenClient.requestAccessToken({ prompt: "consent" });
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: (tokenResponse) => {
+      accessToken = tokenResponse.access_token;
+      document.getElementById("statusText").innerText = "✅ Signed in with access!";
+      document.getElementById("signOutBtn").style.display = "inline-block";
+      document.getElementById("g_id_signin").style.display = "none";
+    }
+  });
+  tokenClient.requestAccessToken();
 }
 
-/********* Google Tasks *********/
-async function addTask() {
-  const token = await ensureToken().catch(err => (alert(err.message), null));
-  if (!token) return;
+window.getAccessToken = () => accessToken;
 
-  const title = byId("taskTitle").value.trim();
-  const dueInput = byId("taskDue").value.trim();
-  if (!title) {
-    alert("Task title cannot be empty!");
-    return;
-  }
+// ----------- TASKS -----------
+async function addTask() {
+  if (!accessToken) return alert("Please sign in first.");
+  const title = document.getElementById("taskTitle").value;
+  const dueInput = document.getElementById("taskDue").value;
+  if (!title) return alert("Task title cannot be empty!");
+
   const dueDate = dueInput ? new Date(dueInput).toISOString() : undefined;
 
   try {
-    const res = await fetch(`${TASKS_API}/lists/@default/tasks`, {
+    const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", {
       method: "POST",
-      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-      body: JSON.stringify({ title, due: dueDate }),
+      headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ title, due: dueDate })
     });
-    if (!res.ok) throw new Error(await res.text());
     const task = await res.json();
-    alert("✅ Task added: " + (task.title || title));
-    await listTasks();
+    alert("✅ Task added: " + task.title);
+    listTasks();
   } catch (err) {
     console.error(err);
     alert("❌ Failed to add task.");
@@ -141,45 +89,25 @@ async function addTask() {
 }
 
 async function listTasks() {
-  const token = await ensureToken().catch(err => (alert(err.message), null));
-  if (!token) return;
+  if (!accessToken) return alert("Please sign in first.");
   try {
-    const res = await fetch(`${TASKS_API}/lists/@default/tasks`, {
-      headers: { Authorization: "Bearer " + token },
+    const res = await fetch("https://tasks.googleapis.com/tasks/v1/lists/@default/tasks", {
+      headers: { Authorization: "Bearer " + accessToken }
     });
-    if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
-    const listEl = byId("tasksList");
+    const listEl = document.getElementById("tasksList");
     listEl.innerHTML = "";
-    const items = data.items || [];
-    if (!items.length) {
+    if (!data.items || data.items.length === 0) {
       listEl.innerHTML = "<li>No tasks found</li>";
       return;
     }
-    const now = new Date();
-    items.forEach((task) => {
-      const li = document.createElement("li");
-      let taskText = task.title + (task.due ? ` (Due: ${formatDate(task.due)})` : "");
-      li.textContent = taskText;
 
+    const now = new Date();
+    data.items.forEach(task => {
+      const li = document.createElement("li");
+      li.textContent = task.title + (task.due ? ` (Due: ${formatDate(task.due)})` : "");
       if (task.status === "completed") li.className = "completed";
       else if (task.due && new Date(task.due) < now) li.className = "overdue";
-
-      const btns = document.createElement("span");
-      btns.style.marginLeft = "8px";
-
-      if (task.status !== "completed") {
-        const completeBtn = document.createElement("button");
-        completeBtn.textContent = "Complete";
-        completeBtn.onclick = () => markTaskComplete(task.id);
-        btns.appendChild(completeBtn);
-      }
-      const deleteBtn = document.createElement("button");
-      deleteBtn.textContent = "Delete";
-      deleteBtn.onclick = () => deleteTask(task.id);
-      btns.appendChild(deleteBtn);
-
-      li.appendChild(btns);
       listEl.appendChild(li);
     });
   } catch (err) {
@@ -188,182 +116,124 @@ async function listTasks() {
   }
 }
 
-async function markTaskComplete(taskId) {
-  const token = await ensureToken().catch(err => (alert(err.message), null));
-  if (!token) return;
-  await fetch(`${TASKS_API}/lists/@default/tasks/${taskId}`, {
-    method: "PATCH",
-    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
-    body: JSON.stringify({ status: "completed" }),
-  }).catch(console.error);
-  listTasks();
-}
-
-async function deleteTask(taskId) {
-  const token = await ensureToken().catch(err => (alert(err.message), null));
-  if (!token) return;
-  await fetch(`${TASKS_API}/lists/@default/tasks/${taskId}`, {
-    method: "DELETE",
-    headers: { Authorization: "Bearer " + token },
-  }).catch(console.error);
-  listTasks();
-}
-
-/********* Google Calendar (read-only) *********/
+// ----------- CALENDAR -----------
 async function listCalendarEvents() {
-  const token = await ensureToken().catch(err => (alert(err.message), null));
-  if (!token) return;
-  const out = byId("eventsList");
-  out.innerHTML = "<li>Loading…</li>";
-
-  // From now to next 7 days
-  const timeMin = new Date().toISOString();
-  const timeMax = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
-
+  if (!accessToken) return alert("Please sign in first.");
   try {
+    const now = new Date().toISOString();
     const res = await fetch(
-      `${CAL_API}/calendars/primary/events?singleEvents=true&orderBy=startTime&timeMin=${encodeURIComponent(
-        timeMin
-      )}&timeMax=${encodeURIComponent(timeMax)}&maxResults=20`,
-      { headers: { Authorization: "Bearer " + token } }
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${now}&maxResults=5&singleEvents=true&orderBy=startTime`,
+      { headers: { Authorization: "Bearer " + accessToken } }
     );
-    if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
-    out.innerHTML = "";
-    const items = data.items || [];
-    if (!items.length) {
-      out.innerHTML = "<li>No upcoming events</li>";
+    const listEl = document.getElementById("calendarList");
+    listEl.innerHTML = "";
+    if (!data.items || data.items.length === 0) {
+      listEl.innerHTML = "<li>No upcoming events</li>";
       return;
     }
-    items.forEach((ev) => {
-      const when = ev.start?.dateTime || ev.start?.date;
+    data.items.forEach(event => {
       const li = document.createElement("li");
-      li.textContent = `${formatDate(when)} — ${ev.summary || "(no title)"}`;
-      out.appendChild(li);
+      const start = event.start.dateTime || event.start.date;
+      li.textContent = `${event.summary} (Start: ${formatDate(start)})`;
+      listEl.appendChild(li);
     });
-  } catch (e) {
-    console.error(e);
-    out.innerHTML = "<li>Failed to load events</li>";
+  } catch (err) {
+    console.error(err);
+    alert("❌ Failed to fetch calendar events.");
   }
 }
 
-/********* Gmail (read-only) *********/
-async function listGmailMessages() {
-  const token = await ensureToken().catch(err => (alert(err.message), null));
-  if (!token) return;
-  const out = byId("gmailList");
-  out.innerHTML = "<li>Loading…</li>";
+// ----------- GMAIL -----------
+async function listEmails() {
+  if (!accessToken) return alert("Please sign in first.");
   try {
-    const res = await fetch(`${GMAIL_API}/users/me/messages?maxResults=10`, {
-      headers: { Authorization: "Bearer " + token },
+    const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=5", {
+      headers: { Authorization: "Bearer " + accessToken }
     });
-    if (!res.ok) throw new Error(await res.text());
     const data = await res.json();
-    const ids = (data.messages || []).map((m) => m.id);
-    if (!ids.length) {
-      out.innerHTML = "<li>No recent emails</li>";
+    const listEl = document.getElementById("gmailList");
+    listEl.innerHTML = "";
+    if (!data.messages || data.messages.length === 0) {
+      listEl.innerHTML = "<li>No emails found</li>";
       return;
     }
-    // Fetch details for each message to get Subject + snippet
-    const details = await Promise.all(
-      ids.map((id) =>
-        fetch(`${GMAIL_API}/users/me/messages/${id}?format=metadata&metadataHeaders=Subject`, {
-          headers: { Authorization: "Bearer " + token },
-        }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
-      )
-    );
-    out.innerHTML = "";
-    details.filter(Boolean).forEach((msg) => {
-      const subject =
-        (msg.payload?.headers || []).find((h) => h.name === "Subject")?.value ||
-        "(no subject)";
-      const snippet = msg.snippet || "";
+    for (let msg of data.messages) {
+      const msgRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}`, {
+        headers: { Authorization: "Bearer " + accessToken }
+      });
+      const fullMsg = await msgRes.json();
+      const snippet = fullMsg.snippet;
+      const subjectHeader = fullMsg.payload.headers.find(h => h.name === "Subject");
       const li = document.createElement("li");
-      li.textContent = `${subject} — ${snippet}`;
-      out.appendChild(li);
-    });
-  } catch (e) {
-    console.error(e);
-    out.innerHTML = "<li>Failed to load emails</li>";
+      li.textContent = `${subjectHeader ? subjectHeader.value : "(No subject)"} - ${snippet}`;
+      listEl.appendChild(li);
+    }
+  } catch (err) {
+    console.error(err);
+    alert("❌ Failed to fetch emails.");
   }
 }
 
-/********* Contacts (People API read-only) *********/
+// ----------- CONTACTS -----------
 async function listContacts() {
-  const token = await ensureToken().catch(err => (alert(err.message), null));
-  if (!token) return;
-  const out = byId("contactsList");
-  out.innerHTML = "<li>Loading…</li>";
+  if (!accessToken) return alert("Please sign in first.");
   try {
-    const res = await fetch(
-      `${PEOPLE_API}/people/me/connections?personFields=names,emailAddresses&sortOrder=FIRST_NAME_ASCENDING&pageSize=25`,
-      { headers: { Authorization: "Bearer " + token } }
-    );
-    if (!res.ok) throw new Error(await res.text());
+    const res = await fetch("https://people.googleapis.com/v1/people/me/connections?personFields=names,emailAddresses&pageSize=5", {
+      headers: { Authorization: "Bearer " + accessToken }
+    });
     const data = await res.json();
-    out.innerHTML = "";
-    const conns = data.connections || [];
-    if (!conns.length) {
-      out.innerHTML = "<li>No contacts</li>";
+    const listEl = document.getElementById("contactsList");
+    listEl.innerHTML = "";
+    if (!data.connections || data.connections.length === 0) {
+      listEl.innerHTML = "<li>No contacts found</li>";
       return;
     }
-    conns.forEach((p) => {
-      const name = p.names?.[0]?.displayName || "(no name)";
-      const email = p.emailAddresses?.[0]?.value || "(no email)";
+    data.connections.forEach(c => {
+      const name = c.names ? c.names[0].displayName : "(No name)";
+      const email = c.emailAddresses ? c.emailAddresses[0].value : "(No email)";
       const li = document.createElement("li");
-      li.textContent = `${name} — ${email}`;
-      out.appendChild(li);
+      li.textContent = `${name} - ${email}`;
+      listEl.appendChild(li);
     });
-  } catch (e) {
-    console.error(e);
-    out.innerHTML = "<li>Failed to load contacts</li>";
+  } catch (err) {
+    console.error(err);
+    alert("❌ Failed to fetch contacts.");
   }
 }
 
-/********* Voice Recognition (unchanged from your flow, but hooked up) *********/
-function setupVoiceRecognition() {
-  let recognition;
-  if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
-    byId("log").innerHTML += "<div>⚠️ Speech Recognition not supported.</div>";
-    return;
-  }
+// ----------- VOICE RECOGNITION -----------
+if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   recognition = new SpeechRecognition();
   recognition.continuous = false;
   recognition.lang = "en-US";
 
   recognition.onstart = () => {
-    byId("statusText").innerText = "🎤 Listening...";
-    byId("listenBtn").style.display = "none";
-    byId("stopBtn").style.display = "inline-block";
+    document.getElementById("statusText").innerText = "🎤 Listening...";
+    document.getElementById("listenBtn").style.display = "none";
+    document.getElementById("stopBtn").style.display = "inline-block";
   };
   recognition.onend = () => {
-    byId("statusText").innerText = "🛑 Stopped listening";
-    byId("listenBtn").style.display = "inline-block";
-    byId("stopBtn").style.display = "none";
+    document.getElementById("statusText").innerText = "🛑 Stopped listening";
+    document.getElementById("listenBtn").style.display = "inline-block";
+    document.getElementById("stopBtn").style.display = "none";
   };
   recognition.onresult = (event) => {
     const transcript = event.results[0][0].transcript.toLowerCase();
-    byId("log").innerHTML += `<div>🗣 You said: ${transcript}</div>`;
+    document.getElementById("log").innerHTML += `<div>🗣 You said: ${transcript}</div>`;
 
     if (transcript.startsWith("add task")) {
       const title = transcript.slice(8).trim();
-      if (title) {
-        byId("taskTitle").value = title;
-        addTask();
-      }
-    } else if (transcript.includes("list tasks")) {
-      listTasks();
-    } else if (transcript.includes("list events")) {
-      listCalendarEvents();
-    } else if (transcript.includes("list emails") || transcript.includes("list gmail")) {
-      listGmailMessages();
-    } else if (transcript.includes("list contacts")) {
-      listContacts();
-    }
+      if (title) { document.getElementById("taskTitle").value = title; addTask(); }
+    } else if (transcript.includes("list tasks")) listTasks();
+    else if (transcript.includes("show calendar")) listCalendarEvents();
+    else if (transcript.includes("show gmail")) listEmails();
+    else if (transcript.includes("show contacts")) listContacts();
   };
 
-  byId("listenBtn").onclick = () => recognition.start();
-  byId("stopBtn").onclick = () => recognition.stop();
+  document.getElementById("listenBtn").onclick = () => recognition.start();
+  document.getElementById("stopBtn").onclick = () => recognition.stop();
+} else {
+  alert("⚠️ Your browser does not support Speech Recognition.");
 }
-
