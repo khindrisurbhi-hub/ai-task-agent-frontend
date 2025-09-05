@@ -1,82 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Task Agent</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Task Agent</title>
 
-<!-- Google Identity Services -->
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="https://unpkg.com/chrono-node/dist/chrono.min.js"></script>
-<script src="config.js"></script>
-<script src="app.js" defer></script>
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 
-<style>
-body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-input, button { margin: 5px; padding: 10px; font-size: 16px; }
-#tasksList { margin-top: 20px; list-style-type: none; padding: 0; }
-#log { border:1px solid #ccc; padding:10px; height:200px; overflow-y:scroll; margin-top: 20px; text-align:left; font-size:14px; }
-#g_id_signin { width: 100% !important; max-width: 320px; margin: 20px auto !important; display: block !important; }
-button { min-width: 120px; }
-li { margin: 8px 0; }
-.completed { color: green; }
-.overdue { color: red; }
-.command-list { margin-top:10px; font-size:14px; color:#555; text-align:left; max-width: 350px; margin-left:auto; margin-right:auto; }
-</style>
+  <!-- (Optional) date parsing lib if you later want natural dates -->
+  <script src="https://unpkg.com/chrono-node/dist/chrono.min.js"></script>
+
+  <!-- Your code -->
+  <script src="config.js"></script>
+  <script src="app.js" defer></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; margin: 16px; }
+    h1 { text-align: center; }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; }
+    input, button { padding: 10px; font-size: 16px; }
+    button { min-width: 140px; }
+    .lists { display: grid; grid-template-columns: 1fr; gap: 18px; margin-top: 16px; }
+    @media (min-width: 900px){ .lists { grid-template-columns: repeat(2, 1fr); } }
+    ul { border: 1px solid #ddd; border-radius: 8px; padding: 10px 14px; list-style: none; min-height: 80px; }
+    li { margin: 6px 0; }
+    .completed { color: green; }
+    .overdue { color: red; }
+    #g_id_signin { width: 100% !important; max-width: 320px; margin: 12px auto !important; display: block !important; }
+    #log { border: 1px dashed #bbb; padding: 10px; min-height: 60px; font-size: 14px; }
+    .section-title { margin: 6px 0; font-weight: 700; }
+    .divider { height: 1px; background: #eee; margin: 14px 0; }
+  </style>
 </head>
 <body>
+  <div class="wrap">
+    <h1>AI Task Agent</h1>
 
-<h1>AI Task Agent</h1>
+    <div id="g_id_signin"></div>
+    <div class="row" style="justify-content:center;">
+      <button id="signOutBtn" style="display:none">Sign Out</button>
+      <span id="statusText"></span>
+    </div>
 
-<div id="g_id_signin"></div>
-<button id="signOutBtn" style="display:none">Sign Out</button>
-<p id="statusText"></p>
+    <div class="divider"></div>
 
-<input id="taskTitle" placeholder="Task title">
-<input id="taskDue" placeholder="Due date (optional)">
-<br>
-<button id="addTaskBtn">Add Task</button>
-<button id="listBtn">List Tasks</button>
-<button id="listenBtn">Start Listening</button>
-<button id="stopBtn" style="display:none">Stop Listening</button>
+    <div class="row">
+      <input id="taskTitle" placeholder="Task title"/>
+      <input id="taskDue" placeholder="Due (YYYY-MM-DD or date-time)"/>
+    </div>
+    <div class="row">
+      <button id="addTaskBtn">Add Task</button>
+      <button id="listTasksBtn">List Tasks</button>
+      <button id="listEventsBtn">List Calendar Events</button>
+      <button id="listGmailBtn">List Gmail</button>
+      <button id="listContactsBtn">List Contacts</button>
+    </div>
 
-<ul id="tasksList"></ul>
-<div id="log"></div>
+    <div class="row" style="margin-top:10px;">
+      <button id="listenBtn">Start Listening</button>
+      <button id="stopBtn" style="display:none">Stop Listening</button>
+    </div>
 
-<div class="command-list">
-<strong>Voice commands:</strong><br>
-- "Add task [task name]"<br>
-- "List tasks"<br>
-- "Complete task [task name]"<br>
-- "Delete task [task name]"<br>
-- "List overdue tasks"<br>
-- "List completed tasks"
-</div>
+    <div class="lists">
+      <div>
+        <div class="section-title">📝 Tasks</div>
+        <ul id="tasksList"></ul>
+      </div>
+      <div>
+        <div class="section-title">📆 Calendar (next 7 days)</div>
+        <ul id="eventsList"></ul>
+      </div>
+      <div>
+        <div class="section-title">✉️ Gmail (recent)</div>
+        <ul id="gmailList"></ul>
+      </div>
+      <div>
+        <div class="section-title">👥 Contacts</div>
+        <ul id="contactsList"></ul>
+      </div>
+    </div>
 
-<script>
-window.addEventListener("DOMContentLoaded", () => {
-  const signinDiv = document.getElementById("g_id_signin");
+    <div class="section-title" style="margin-top:16px;">Voice log</div>
+    <div id="log"></div>
+  </div>
 
-  google.accounts.id.initialize({
-    client_id: CLIENT_ID,
-    callback: handleCredentialResponse,
-    ux_mode: 'popup'
-  });
-  google.accounts.id.renderButton(signinDiv, { theme: "outline", size: "large", width: 300 });
-  google.accounts.id.prompt();
-
-  document.getElementById("signOutBtn").onclick = () => {
-    accessToken = null;
-    google.accounts.id.disableAutoSelect();
-    document.getElementById("statusText").innerText = "🚪 Signed out";
-    document.getElementById("signOutBtn").style.display = "none";
-    signinDiv.style.display = "block";
-  };
-
-  document.getElementById("addTaskBtn").onclick = addTask;
-  document.getElementById("listBtn").onclick = listTasks;
-});
-</script>
-
+  <script>
+    // Start the sign-in & token flow after DOM is ready
+    window.addEventListener("DOMContentLoaded", () => {
+      window._initSignIn();
+    });
+  </script>
 </body>
 </html>
+
