@@ -1,196 +1,176 @@
 // app.js
-let accessToken = null;
+
 let tokenClient;
-let recognition;
+let gapiInited = false;
+let gisInited = false;
 
-// Initialize when DOM is ready
-window.addEventListener("DOMContentLoaded", () => {
-  google.accounts.id.initialize({
-    client_id: CLIENT_ID,
-    auto_select: false,
-    callback: handleCredentialResponse
+// Load GAPI client
+function gapiLoaded() {
+  gapi.load("client", initializeGapiClient);
+}
+
+async function initializeGapiClient() {
+  await gapi.client.init({
+    discoveryDocs: [
+      "https://www.googleapis.com/discovery/v1/apis/tasks/v1/rest",
+      "https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest",
+      "https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest",
+      "https://people.googleapis.com/$discovery/rest?version=v1"
+    ]
   });
+  gapiInited = true;
+}
 
-  google.accounts.id.renderButton(
-    document.getElementById("g_id_signin"),
-    { theme: "outline", size: "large", width: 300 }
-  );
-
-  document.getElementById("signOutBtn").onclick = signOut;
-
-  document.getElementById("addTaskBtn").onclick = addTask;
-  document.getElementById("listBtn").onclick = listTasks;
-  document.getElementById("calendarBtn").onclick = listCalendar;
-  document.getElementById("gmailBtn").onclick = listGmail;
-  document.getElementById("contactsBtn").onclick = listContacts;
-
-  // Voice buttons
-  document.getElementById("listenBtn").onclick = startListening;
-  document.getElementById("stopBtn").onclick = stopListening;
-});
-
-// Handle login
-function handleCredentialResponse() {
+function gisLoaded() {
   tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: (tokenResponse) => {
-      accessToken = tokenResponse.access_token;
-      gapi.load("client", initGapiClient);
-    }
-  });
-  tokenClient.requestAccessToken();
-}
-
-async function initGapiClient() {
-  await gapi.client.init({ discoveryDocs: DISCOVERY_DOCS });
-  document.getElementById("statusText").innerText = "✅ Signed in";
-  document.getElementById("signOutBtn").style.display = "inline-block";
-  document.getElementById("g_id_signin").style.display = "none";
-}
-
-function signOut() {
-  accessToken = null;
-  google.accounts.id.disableAutoSelect();
-  document.getElementById("statusText").innerText = "🚪 Signed out";
-  document.getElementById("signOutBtn").style.display = "none";
-  document.getElementById("g_id_signin").style.display = "block";
-}
-
-// ---------------------- TASKS ----------------------
-async function addTask(titleInput) {
-  if (!accessToken) return alert("Sign in first");
-  const title = titleInput || document.getElementById("taskTitle").value;
-  if (!title) return alert("Enter task title");
-
-  const dueInput = document.getElementById("taskDue").value;
-  let dueDate = null;
-  if (dueInput) {
-    const parsed = chrono.parseDate(dueInput);
-    if (parsed) dueDate = parsed.toISOString();
-  }
-
-  await gapi.client.tasks.tasks.insert({
-    tasklist: "@default",
-    resource: { title, due: dueDate }
-  });
-
-  log("Task added: " + title);
-}
-
-async function listTasks() {
-  if (!accessToken) return alert("Sign in first");
-
-  const res = await gapi.client.tasks.tasks.list({ tasklist: "@default" });
-  const tasks = res.result.items || [];
-  const ul = document.getElementById("tasksList");
-  ul.innerHTML = "";
-  tasks.forEach(t => {
-    const li = document.createElement("li");
-    li.textContent = t.title;
-    if (t.status === "completed") li.classList.add("completed");
-    if (t.due && new Date(t.due) < new Date()) li.classList.add("overdue");
-    ul.appendChild(li);
-  });
-  log("📋 Listed " + tasks.length + " tasks");
-}
-
-// ---------------------- CALENDAR ----------------------
-async function listCalendar() {
-  if (!accessToken) return alert("Sign in first");
-  const res = await gapi.client.calendar.events.list({
-    calendarId: "primary",
-    maxResults: 5,
-    singleEvents: true,
-    orderBy: "startTime",
-    timeMin: new Date().toISOString()
-  });
-  const events = res.result.items || [];
-  log("📅 Upcoming events:");
-  events.forEach(e => log(e.summary + " @ " + (e.start.dateTime || e.start.date)));
-}
-
-// ---------------------- GMAIL ----------------------
-async function listGmail() {
-  if (!accessToken) return alert("Sign in first");
-  const res = await gapi.client.gmail.users.messages.list({
-    userId: "me",
-    maxResults: 5
-  });
-  const messages = res.result.messages || [];
-  for (let m of messages) {
-    const detail = await gapi.client.gmail.users.messages.get({ userId: "me", id: m.id });
-    const snippet = detail.result.snippet;
-    const subjectHeader = detail.result.payload.headers.find(h => h.name === "Subject");
-    log("📧 " + (subjectHeader ? subjectHeader.value : "No subject") + " - " + snippet);
-  }
-}
-
-// ---------------------- CONTACTS ----------------------
-async function listContacts() {
-  if (!accessToken) return alert("Sign in first");
-  const res = await gapi.client.people.people.connections.list({
-    resourceName: "people/me",
-    pageSize: 5,
-    personFields: "names,emailAddresses"
-  });
-  const connections = res.result.connections || [];
-  log("👥 Contacts:");
-  connections.forEach(c => {
-    const name = c.names ? c.names[0].displayName : "No name";
-    const email = c.emailAddresses ? c.emailAddresses[0].value : "No email";
-    log(name + " - " + email);
-  });
-}
-
-// ---------------------- VOICE COMMANDS ----------------------
-function startListening() {
-  if (!("webkitSpeechRecognition" in window)) {
-    alert("Speech recognition not supported in this browser.");
-    return;
-  }
-
-  recognition = new webkitSpeechRecognition();
-  recognition.lang = "en-US";
-  recognition.continuous = true;
-  recognition.interimResults = false;
-
-  recognition.onresult = (event) => {
-    const transcript = event.results[event.results.length - 1][0].transcript.trim();
-    log("🎤 Heard: " + transcript);
-
-    if (/^add task (.+)/i.test(transcript)) {
-      const taskName = transcript.match(/^add task (.+)/i)[1];
-      addTask(taskName);
-    } else if (/list tasks/i.test(transcript)) {
+    scope: SCOPES.join(" "),
+    callback: (response) => {
+      if (response.error) {
+        console.error("Auth error", response);
+        return;
+      }
+      document.getElementById("loginBtn").style.display = "none";
+      document.getElementById("logoutBtn").style.display = "inline";
       listTasks();
-    } else if (/show calendar/i.test(transcript)) {
-      listCalendar();
-    } else if (/show gmail/i.test(transcript)) {
+      listEvents();
       listGmail();
-    } else if (/show contacts/i.test(transcript)) {
       listContacts();
-    } else {
-      log("❓ Unknown command");
     }
+  });
+  gisInited = true;
+}
+
+// Sign in
+document.getElementById("loginBtn").onclick = () => {
+  if (gapiInited && gisInited) {
+    tokenClient.requestAccessToken({ prompt: "consent" });
+  }
+};
+
+// Sign out
+document.getElementById("logoutBtn").onclick = () => {
+  google.accounts.oauth2.revoke(tokenClient.access_token, () => {
+    console.log("Token revoked");
+    document.getElementById("loginBtn").style.display = "inline";
+    document.getElementById("logoutBtn").style.display = "none";
+  });
+};
+
+// ========================== TASKS ==========================
+async function listTasks() {
+  try {
+    const res = await gapi.client.tasks.tasks.list({ tasklist: "@default" });
+    const tasks = res.result.items || [];
+    const taskList = document.getElementById("taskList");
+    taskList.innerHTML = "";
+    tasks.forEach(t => {
+      const li = document.createElement("li");
+      li.textContent = t.title;
+      taskList.appendChild(li);
+    });
+  } catch (err) {
+    console.error("Tasks error", err);
+  }
+}
+
+document.getElementById("addTaskBtn").onclick = async () => {
+  const title = document.getElementById("taskInput").value;
+  if (!title) return;
+  await gapi.client.tasks.tasks.insert({ tasklist: "@default", resource: { title } });
+  listTasks();
+};
+
+// ========================== CALENDAR ==========================
+async function listEvents() {
+  try {
+    const res = await gapi.client.calendar.events.list({
+      calendarId: "primary",
+      timeMin: new Date().toISOString(),
+      maxResults: 5,
+      singleEvents: true,
+      orderBy: "startTime"
+    });
+    const events = res.result.items || [];
+    const list = document.getElementById("calendarList");
+    list.innerHTML = "";
+    events.forEach(ev => {
+      const li = document.createElement("li");
+      li.textContent = `${ev.summary} (${ev.start.dateTime || ev.start.date})`;
+      list.appendChild(li);
+    });
+  } catch (err) {
+    console.error("Calendar error", err);
+  }
+}
+
+// ========================== GMAIL ==========================
+async function listGmail() {
+  try {
+    const res = await gapi.client.gmail.users.messages.list({ userId: "me", maxResults: 5 });
+    const msgs = res.result.messages || [];
+    const list = document.getElementById("gmailList");
+    list.innerHTML = "";
+    for (let m of msgs) {
+      const msg = await gapi.client.gmail.users.messages.get({ userId: "me", id: m.id });
+      const headers = msg.result.payload.headers;
+      const subject = headers.find(h => h.name === "Subject")?.value || "(No subject)";
+      const snippet = msg.result.snippet;
+      const li = document.createElement("li");
+      li.textContent = `${subject} - ${snippet}`;
+      list.appendChild(li);
+    }
+  } catch (err) {
+    console.error("Gmail error", err);
+  }
+}
+
+// ========================== CONTACTS ==========================
+async function listContacts() {
+  try {
+    const res = await gapi.client.people.people.connections.list({
+      resourceName: "people/me",
+      pageSize: 5,
+      personFields: "names,emailAddresses"
+    });
+    const contacts = res.result.connections || [];
+    const list = document.getElementById("contactsList");
+    list.innerHTML = "";
+    contacts.forEach(c => {
+      const name = c.names?.[0]?.displayName || "No Name";
+      const email = c.emailAddresses?.[0]?.value || "No Email";
+      const li = document.createElement("li");
+      li.textContent = `${name} - ${email}`;
+      list.appendChild(li);
+    });
+  } catch (err) {
+    console.error("Contacts error", err);
+  }
+}
+
+// ========================== VOICE ==========================
+document.getElementById("voiceBtn").onclick = () => {
+  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.onstart = () => document.getElementById("voiceStatus").textContent = "Listening...";
+  recognition.onresult = async (e) => {
+    const command = e.results[0][0].transcript.toLowerCase();
+    document.getElementById("voiceStatus").textContent = `Heard: ${command}`;
+    if (command.includes("add task")) {
+      const task = command.replace("add task", "").trim();
+      if (task) {
+        await gapi.client.tasks.tasks.insert({ tasklist: "@default", resource: { title: task } });
+        listTasks();
+      }
+    } else if (command.includes("list tasks")) listTasks();
+    else if (command.includes("show calendar")) listEvents();
+    else if (command.includes("show gmail")) listGmail();
+    else if (command.includes("show contacts")) listContacts();
   };
-
   recognition.start();
-  document.getElementById("listenBtn").style.display = "none";
-  document.getElementById("stopBtn").style.display = "inline-block";
-  log("🎙️ Listening...");
-}
+};
 
-function stopListening() {
-  if (recognition) recognition.stop();
-  document.getElementById("listenBtn").style.display = "inline-block";
-  document.getElementById("stopBtn").style.display = "none";
-  log("🛑 Stopped listening");
-}
-
-// ---------------------- LOG HELPER ----------------------
-function log(msg) {
-  const logDiv = document.getElementById("log");
-  logDiv.innerHTML += msg + "<br>";
-  logDiv.scrollTop = logDiv.scrollHeight;
-}
+// Auto init
+window.onload = () => {
+  gapiLoaded();
+  gisLoaded();
+};
