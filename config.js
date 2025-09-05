@@ -1,5 +1,5 @@
-// ✅ Replace with your real OAuth 2.0 Client ID from Google Cloud Console
-const CLIENT_ID = "YOUR_CLIENT_ID_HERE.apps.googleusercontent.com";
+// ✅ OAuth 2.0 Client ID
+const CLIENT_ID = "943220084061-ujlua6j24n7amv6tuufhtuaueh5rbf00.apps.googleusercontent.com";
 
 const SCOPES = `
   https://www.googleapis.com/auth/tasks
